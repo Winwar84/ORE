@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controllo Entrate e Uscite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#1F2937">
+    <style>
+        .hamburger-line { @apply w-6 h-0.5 bg-gray-300 my-1 transition-all duration-300; }
+        .hamburger-active > span:nth-child(1) { @apply rotate-45 translate-y-[6px]; }
+        .hamburger-active > span:nth-child(2) { @apply scale-0; }
+        .hamburger-active > span:nth-child(3) { @apply -rotate-45 -translate-y-[6px]; }
+        .button-submitting, .button-quick-loading { position: relative; color: transparent !important; cursor: wait; background-color: #4f46e5 !important; }
+        .button-submitting::after, .button-quick-loading::after { content: ''; position: absolute; width: 16px; height: 16px; top: 0; left: 0; right: 0; bottom: 0; margin: auto; border: 3px solid transparent; border-top-color: #ffffff; border-radius: 50%; animation: button-loading-spinner 1s linear infinite; }
+        @keyframes button-loading-spinner { from { transform: rotate(0turn); } to { transform: rotate(1turn); } }
+        #alert-box { position: fixed; bottom: 1rem; right: 1rem; left: 1rem; sm:left: auto; z-index: 50; transition: opacity 0.3s ease-in-out; }
+        .alert-base { @apply w-full sm:max-w-sm p-3 sm:p-4 rounded-lg text-sm sm:text-base text-white shadow-lg mx-auto; }
+        .input-field { @apply block w-full p-3 text-base text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400; color: #f3f4f6; background-color: #374151; }
+        select.input-field { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; appearance: none; }
+        select.input-field option { background-color: #374151; color: #f3f4f6; }
+        .btn { @apply inline-flex items-center justify-center py-2 px-4 rounded-lg text-sm sm:text-base font-medium transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50; }
+        .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500; }
+        .btn-secondary { @apply bg-gray-600 text-gray-100 hover:bg-gray-500 focus:ring-gray-500; }
+        .btn-danger { @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500; }
+        .btn-success { @apply bg-green-600 text-white hover:bg-green-500 focus:ring-green-500; }
+        .btn-warning { @apply bg-yellow-600 text-white hover:bg-yellow-500 focus:ring-yellow-500; }
+        .btn-sm { @apply !py-1.5 !px-3 !text-xs; }
+        .card { @apply bg-gray-800 p-4 sm:p-5 rounded-lg shadow-md border border-gray-700/50; }
+        td, th { @apply px-2 py-2 sm:px-4 sm:py-3; }
+        tbody tr { @apply border-b border-gray-700 last:border-b-0; }
+        thead th { @apply sticky top-0 bg-gray-700 z-10 text-left text-xs uppercase font-semibold tracking-wider text-gray-300; }
+        #desktop-dropdown-menu { transition: opacity 0.2s ease-out, transform 0.2s ease-out; }
+        .dropdown-item { @apply block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700/70 rounded-md transition-colors duration-150; }
+        .dropdown-item-danger { @apply block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-600/20 hover:text-red-300 rounded-md transition-colors duration-150; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col font-sans">
+    <div class="container mx-auto p-3 sm:p-4 md:p-6 flex-grow">
+        <!-- Header con menu -->
+        <header class="flex justify-between items-center mb-5 sm:mb-6">
+            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-400">Registro Orario</h1>
+            <div class="flex items-center">
+                 <span id="user-name" class="hidden sm:inline text-sm sm:text-base text-gray-300 mr-4"></span>
+                <!-- Menu Desktop -->
+                <div class="hidden sm:block relative">
+                    <button id="desktop-menu-btn" type="button" class="btn btn-secondary !p-2 flex items-center justify-center" title="Menu"><div class="flex flex-col justify-between w-[24px] h-[18px]"><span class="w-6 h-0.5 bg-gray-300"></span><span class="w-6 h-0.5 bg-gray-300"></span><span class="w-6 h-0.5 bg-gray-300"></span></div></button>
+                    <div id="desktop-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg z-50 border border-gray-700 origin-top-right">
+                        <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="desktop-menu-btn">
+                             <div class="px-4 pt-2 pb-2 border-b border-gray-700 mb-1"><p class="text-sm font-medium text-gray-200 truncate" id="desktop-user-name-dropdown">Caricamento...</p></div>
+                             <div class="px-1 py-1">
+                                 <a href="ore-inserite.html" class="dropdown-item flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>Registro Ore</span></a>
+                                 <a href="grafico.html" class="dropdown-item flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg><span>Vedi Grafico</span></a>
+                             </div>
+                             <div class="border-t border-gray-700 mx-1 my-1"></div>
+                             <div class="px-1 py-1"><button id="desktop-logout-btn-dropdown" class="dropdown-item-danger flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg><span>Logout</span></button></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Hamburger Mobile -->
+                 <button id="hamburger-btn" class="inline-block sm:hidden p-2 z-50"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button>
+            </div>
+        </header>
+
+        <!-- Mobile Menu -->
+         <div id="mobile-menu" class="hidden fixed inset-0 bg-gray-900 bg-opacity-95 z-40 flex flex-col items-center justify-center p-6">
+             <span id="mobile-user-name" class="block text-lg text-gray-300 mb-8"></span>
+             <nav class="flex flex-col gap-4 w-full max-w-xs text-center">
+                <button type="button" onclick="window.location.href='ore-inserite.html'" class="btn btn-primary w-full text-lg">Registro Ore</button>
+                <button type="button" onclick="window.location.href='grafico.html'" class="btn btn-secondary w-full text-lg">Vedi Grafico</button>
+                <button type="button" id="mobile-logout-btn" class="btn btn-danger w-full text-lg mt-4">Logout</button>
+            </nav>
+        </div>
+
+        <!-- Form Registrazione Manuale -->
+        <section class="mb-5 sm:mb-6 card">
+            <form id="form">
+                <h2 class="text-lg font-semibold mb-4 text-gray-200">Inserimento Manuale</h2>
+                <input type="hidden" id="edit-key" value="-1"> <!-- Changed id to edit-key -->
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div><label for="data" class="block text-sm font-medium mb-1 text-gray-400">Data</label><input type="date" id="data" required class="input-field"></div>
+                    <div><label for="orario" class="block text-sm font-medium mb-1 text-gray-400">Ora</label><input type="time" id="orario" required class="input-field"></div>
+                    <div><label for="tipo" class="block text-sm font-medium mb-1 text-gray-400">Tipo</label><select id="tipo" required class="input-field"><option value="entrata">Entrata</option><option value="uscita">Uscita</option></select></div>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" id="cancel-button" class="hidden btn btn-secondary">Annulla</button>
+                    <button type="submit" id="submit-button" class="btn btn-primary">Aggiungi</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Pulsanti Rapidi -->
+        <section class="mb-5 sm:mb-6 card">
+             <h2 class="text-lg font-semibold mb-4 text-gray-200">Registrazione Rapida (Ora Corrente)</h2>
+             <div class="flex flex-col sm:flex-row gap-3">
+                 <button type="button" id="quick-entry-btn" class="flex-1 btn btn-success flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clip-rule="evenodd" /></svg>Entrata Ora</button>
+                 <button type="button" id="quick-exit-btn" class="flex-1 btn btn-warning flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Uscita Ora</button>
+             </div>
+        </section>
+
+        <!-- Tabella Transazioni Recenti -->
+        <section class="card">
+            <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-200">Ultime 10 Registrazioni</h2>
+            <div class="overflow-x-auto rounded-lg border border-gray-700">
+                <table id="table" class="w-full text-sm sm:text-base text-gray-100">
+                    <thead><tr><th>Data e Ora</th><th>Tipo</th><th class="text-right">Azioni</th></tr></thead>
+                    <tbody id="tbody"><tr data-placeholder><td colspan="3" class="text-center py-6 text-gray-400">Caricamento...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-gray-400 text-xs sm:text-sm">Vedi tutto: <a href="ore-inserite.html" class="text-indigo-400 hover:text-indigo-300 underline">Registro Ore Completo</a>.</p>
+            </div>
+        </section>
+    </div>
+
+     <!-- Alert Box Container -->
+     <div id="alert-box" class="opacity-0"><div id="alert-content" class="alert-base"></div></div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js" type="module"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js" type="module"></script> -->
+
+    <script type="module">
+        // ------ Importa le funzioni Firebase ------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import {
+            getDatabase, ref, set, get, push, update, remove, onValue, query, orderByChild
+        } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js";
+
+        // ------ LA TUA Configurazione Firebase SPECIFICA ------
+        const firebaseConfig = {
+             apiKey: "AIzaSyDoyFPX_N1Pd4XQBUw7o6mFdxbZWku5A9g",
+            authDomain: "batabase-ore.firebaseapp.com",
+            databaseURL: "https://batabase-ore-default-rtdb.firebaseio.com",
+            projectId: "batabase-ore",
+            storageBucket: "batabase-ore.firebasestorage.app",
+            messagingSenderId: "656837101213",
+            appId: "1:656837101213:web:a1a358e0b5fdd191c2b674",
+            measurementId: "G-31B4LMZH5F"
+        };
+
+        // ------ Inizializza Firebase ------
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        // const analytics = getAnalytics(app);
+
+        // ------ Variabili Globali di Stato ------
+        const alertBox = document.getElementById('alert-box');
+        const alertContent = document.getElementById('alert-content');
+        let currentUser = null;
+        let currentUserId = null;
+        let allTransactions = []; // Array locale sincronizzato con Firebase
+        let transactionsListener = null; // Riferimento al listener onValue
+
+        // ------ Riferimenti Elementi DOM ------
+        const form = document.getElementById('form');
+        const tbody = document.getElementById('tbody');
+        const dataInput = document.getElementById('data');
+        const orarioInput = document.getElementById('orario');
+        const tipoSelect = document.getElementById('tipo');
+        const submitButton = document.getElementById('submit-button');
+        const cancelButton = document.getElementById('cancel-button');
+        const editKeyInput = document.getElementById('edit-key'); // Changed ID
+        const quickEntryBtn = document.getElementById('quick-entry-btn');
+        const quickExitBtn = document.getElementById('quick-exit-btn');
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const desktopMenuBtn = document.getElementById('desktop-menu-btn');
+        const desktopDropdownMenu = document.getElementById('desktop-dropdown-menu');
+
+        // ------ Funzione Alert (INVARIATA) ------
+        function showAlert(message, isError = false, duration = 3000) {
+            alertContent.textContent = message;
+            alertContent.classList.remove(isError ? 'bg-green-600' : 'bg-red-600');
+            alertContent.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            alertBox.classList.remove('opacity-0');
+            clearTimeout(alertBox.timer);
+            alertBox.timer = setTimeout(() => { alertBox.classList.add('opacity-0'); }, duration);
+        }
+
+        // ------ Funzione Helper per popolare i nomi utente ------
+        function populateUserNames(user) {
+            const userNameEl = document.getElementById('user-name');
+            const mobileUserNameEl = document.getElementById('mobile-user-name');
+            const desktopDropdownUserNameEl = document.getElementById('desktop-user-name-dropdown');
+            const displayName = user.displayName || user.email || 'Utente';
+            const greeting = `Ciao, ${user.displayName || user.email.split('@')[0]}`;
+            if (userNameEl) userNameEl.textContent = greeting;
+            if (mobileUserNameEl) mobileUserNameEl.textContent = greeting;
+            if (desktopDropdownUserNameEl) desktopDropdownUserNameEl.textContent = displayName;
+        }
+
+        // ------ Gestione Stato Autenticazione ------
+        onAuthStateChanged(auth, (user) => {
+            const isLoginPage = window.location.pathname.includes('login.html');
+            if (user) {
+                currentUser = user;
+                currentUserId = user.uid;
+                console.log('Utente loggato:', currentUserId);
+                populateUserNames(user);
+                if (isLoginPage) {
+                    window.location.replace('index.html');
+                    return;
+                }
+                // Avvia il caricamento dati SOLO se l'utente è loggato
+                setDefaultDateTime();
+                loadTransactions(); // Avvia l'ascolto delle transazioni
+            } else {
+                currentUser = null;
+                currentUserId = null;
+                console.log('Utente non loggato.');
+                // Scollega il listener se l'utente fa logout
+                if (transactionsListener) {
+                    transactionsListener(); // Chiamata alla funzione di unsubscribe restituita da onValue
+                    transactionsListener = null;
+                    console.log("Listener transazioni scollegato.");
+                }
+                allTransactions = []; // Svuota l'array locale
+                renderTransactions(); // Mostra tabella vuota/messaggio
+                 // Pulisci info utente
+                 populateUserNames({ email: 'Nessun Utente' }); // Mostra placeholder
+                if (!isLoginPage) {
+                    window.location.replace('login.html');
+                }
+            }
+        });
+
+        // ------ Funzione Logout (Firebase) ------
+        function handleLogout() {
+            if (confirm('Sei sicuro di voler effettuare il logout?')) {
+                signOut(auth).catch((error) => {
+                    console.error("Errore durante il logout:", error);
+                    showAlert('Errore durante il logout.', true);
+                });
+                // onAuthStateChanged gestirà il redirect e l'UI update
+            }
+        }
+        const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+        const desktopLogoutBtnDropdown = document.getElementById('desktop-logout-btn-dropdown');
+        if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', handleLogout);
+        if (desktopLogoutBtnDropdown) desktopLogoutBtnDropdown.addEventListener('click', handleLogout);
+
+        // ------ Funzioni UI Menu (COPIATE DA index.html ORIGINALE) ------
+        hamburgerBtn.addEventListener('click', (e) => { e.stopPropagation(); hamburgerBtn.classList.toggle('hamburger-active'); mobileMenu.classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden', !mobileMenu.classList.contains('hidden')); if (desktopDropdownMenu && !desktopDropdownMenu.classList.contains('hidden')) { desktopDropdownMenu.classList.add('hidden'); } });
+        if (desktopMenuBtn && desktopDropdownMenu) { desktopMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); desktopDropdownMenu.classList.toggle('hidden'); if (!mobileMenu.classList.contains('hidden')) { mobileMenu.classList.add('hidden'); hamburgerBtn.classList.remove('hamburger-active'); document.body.classList.remove('overflow-hidden'); } }); }
+        document.addEventListener('click', (e) => { if (desktopDropdownMenu && !desktopDropdownMenu.classList.contains('hidden')) { if (!desktopDropdownMenu.contains(e.target) && !desktopMenuBtn.contains(e.target)) { desktopDropdownMenu.classList.add('hidden'); } } if (!mobileMenu.classList.contains('hidden')) { if (!mobileMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) { mobileMenu.classList.add('hidden'); hamburgerBtn.classList.remove('hamburger-active'); document.body.classList.remove('overflow-hidden'); } } });
+
+        // ------ Funzioni Helper (INVARIATE o con minime modifiche) ------
+        function setSubmitLoading(isLoading, button = submitButton) { /* ... codice invariato ... */
+             const btn = button || submitButton; if(!btn) return;
+             if (isLoading) { btn.disabled = true; btn.classList.add(btn.id.includes('quick') ? 'button-quick-loading' : 'button-submitting'); if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML; btn.innerHTML = ''; }
+             else { btn.disabled = false; btn.classList.remove('button-submitting', 'button-quick-loading'); if (btn.dataset.originalHtml) { btn.innerHTML = btn.dataset.originalHtml; delete btn.dataset.originalHtml; } else {
+                    if (btn.id === 'submit-button') btn.textContent = (editKeyInput.value !== '-1' ? 'Modifica' : 'Aggiungi'); // Usa editKeyInput
+                    else if (btn.id === 'quick-entry-btn') btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clip-rule="evenodd" /></svg> Entrata Ora';
+                    else if (btn.id === 'quick-exit-btn') btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg> Uscita Ora';
+                 }
+            }
+         }
+        function resetForm() { form.reset(); editKeyInput.value = "-1"; cancelButton.classList.add('hidden'); submitButton.textContent = 'Aggiungi'; submitButton.classList.remove('bg-blue-600','hover:bg-blue-500'); submitButton.classList.add('btn-primary'); setSubmitLoading(false, submitButton); setDefaultDateTime(); }
+        function setDefaultDateTime() { try { const now = new Date(); const d = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]; dataInput.value = d; const t = now.toTimeString().split(' ')[0].substring(0, 5); orarioInput.value = t; } catch (e) { console.warn("Failed to set default date/time:", e); }}
+        function formatDateTime(dateStr, timeStr) { try { if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || !/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) throw new Error('Invalid format'); const d=new Date(`${dateStr}T${timeStr}`); if(isNaN(d)) throw new Error('Invalid date'); return d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',',''); } catch(e){ console.warn("Date format fallback:", e); return `${dateStr} ${timeStr}`; } }
+        function showConfirm(message, onConfirm) { if (confirm(message)) { onConfirm(); } }
+
+        // ------ Gestione Transazioni (Firebase RTDB) ------
+
+        function loadTransactions() {
+            if (!currentUserId) {
+                tbody.innerHTML = '<tr data-placeholder><td colspan="3" class="text-center py-6 text-gray-400">Autenticazione richiesta...</td></tr>';
+                return;
+            }
+            console.log("Avvio listener transazioni per:", currentUserId);
+            tbody.innerHTML = '<tr data-placeholder><td colspan="3" class="text-center py-6 text-gray-400">Caricamento...</td></tr>';
+
+            const transactionsRef = ref(database, `users/${currentUserId}/transactions`);
+            // Ordina per data nel client, Firebase onValue non garantisce ordine senza query
+            // const transactionsQuery = query(transactionsRef, orderByChild('data')); // Potresti provare ma onValue può complicare l'ordine real-time
+
+            // Scollega listener precedente se esiste
+            if (transactionsListener) { transactionsListener(); }
+
+            transactionsListener = onValue(transactionsRef, (snapshot) => {
+                allTransactions = [];
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    allTransactions = Object.entries(data).map(([key, value]) => ({ key: key, ...value }));
+                    // Ordina lato client perché onValue non garantisce ordine
+                     allTransactions.sort((a, b) => {
+                         try {
+                             const dA = new Date(`${a.data}T${a.orario}`);
+                             const dB = new Date(`${b.data}T${b.orario}`);
+                             if (isNaN(dA) || isNaN(dB)) return 0;
+                             return dA - dB; // Ordine cronologico ascendente
+                         } catch (e) { return 0; }
+                     });
+                    console.log("Transazioni aggiornate:", allTransactions.length);
+                } else {
+                    console.log("Nessuna transazione trovata per l'utente.");
+                }
+                renderTransactions();
+            }, (error) => {
+                console.error("Errore lettura Firebase:", error);
+                showAlert("Errore nel caricamento delle registrazioni.", true);
+                tbody.innerHTML = '<tr data-placeholder><td colspan="3" class="text-center py-6 text-red-400">Errore caricamento dati.</td></tr>';
+            });
+        }
+
+        function renderTransactions() {
+            tbody.innerHTML = ''; // Pulisce la tabella
+            if (allTransactions.length === 0) {
+                tbody.innerHTML = '<tr data-placeholder><td colspan="3" class="text-center py-6 text-gray-400">Nessuna registrazione trovata.</td></tr>';
+                return;
+            }
+            const recent = allTransactions.slice(-10).reverse(); // Ultime 10, più recenti prima
+            recent.forEach((transaction) => {
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-gray-700/50');
+                // Usa transaction.key per le azioni
+                row.innerHTML = `
+                    <td class="whitespace-nowrap">${formatDateTime(transaction.data, transaction.orario)}</td>
+                    <td class="capitalize"> <span class="px-2 py-0.5 rounded text-xs font-medium ${transaction.tipo === 'entrata' ? 'bg-green-700 text-green-100' : 'bg-yellow-700 text-yellow-100'}">${transaction.tipo}</span> </td>
+                    <td class="text-right whitespace-nowrap space-x-1">
+                        <button onclick="startEditTransaction('${transaction.key}')" title="Modifica" class="btn btn-secondary btn-sm !p-1.5"> <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg> </button>
+                        <button onclick="deleteTransactionWrapper('${transaction.key}')" title="Elimina" class="btn btn-danger btn-sm !p-1.5"> <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> </button>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+         // Funzione controllo limite (usa keyToIgnore)
+         function canAddTransaction(dateStr, type, keyToIgnore = null) {
+             const MAX = 2; let count = 0;
+             for (const transaction of allTransactions) {
+                 if (keyToIgnore && transaction.key === keyToIgnore) continue;
+                 if (transaction.data === dateStr && transaction.tipo === type) count++;
+             }
+             return count < MAX;
+         }
+
+        // Submit Form (Aggiunta/Modifica)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentUserId) { showAlert("Utente non autenticato.", true); return; }
+            setSubmitLoading(true, submitButton);
+
+            const transactionData = { data: dataInput.value, orario: orarioInput.value, tipo: tipoSelect.value };
+            if (!transactionData.data || !transactionData.orario) { showAlert("Data e ora sono obbligatorie.", true); setSubmitLoading(false, submitButton); return; }
+
+            const firebaseKeyToEdit = editKeyInput.value;
+
+            if (!canAddTransaction(transactionData.data, transactionData.tipo, firebaseKeyToEdit)) {
+                const t=transactionData.tipo==='entrata'?'entrate':'uscite'; const dt=formatDateTime(transactionData.data,'00:00').split(' ')[0]; showAlert(`Limite di 2 ${t} raggiunto per il ${dt}.`, true, 4000); setSubmitLoading(false, submitButton); return;
+            }
+
+            let dbPromise;
+            let successMessage = "";
+            if (firebaseKeyToEdit !== '-1') {
+                // Modifica
+                const transactionRef = ref(database, `users/${currentUserId}/transactions/${firebaseKeyToEdit}`);
+                dbPromise = update(transactionRef, transactionData);
+                successMessage = "Registrazione modificata.";
+            } else {
+                // Aggiunta
+                const transactionsListRef = ref(database, `users/${currentUserId}/transactions`);
+                const newTransactionRef = push(transactionsListRef);
+                dbPromise = set(newTransactionRef, transactionData);
+                 successMessage = "Registrazione aggiunta.";
+            }
+
+            dbPromise.then(() => {
+                showAlert(successMessage, false);
+                resetForm();
+                // onValue aggiornerà la tabella
+            }).catch((error) => {
+                console.error("Errore scrittura Firebase:", error);
+                showAlert(firebaseKeyToEdit !== '-1' ? "Errore durante la modifica." : "Errore durante l'aggiunta.", true);
+            }).finally(() => setSubmitLoading(false, submitButton));
+        });
+
+        // Quick Actions
+        function handleQuickAction(type, btnEl) {
+            if (!currentUserId) { showAlert("Utente non autenticato.", true); return; }
+            setSubmitLoading(true, btnEl);
+            const now = new Date(); let cDate, cTime;
+            try { cDate = new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().split('T')[0]; cTime = now.toTimeString().split(' ')[0].substring(0, 5); } catch (e) { showAlert("Errore nel recuperare data/ora corrente.", true); setSubmitLoading(false, btnEl); return; }
+            if (!canAddTransaction(cDate, type)) { const t=type==='entrata'?'entrate':'uscite'; const dt=formatDateTime(cDate,'00:00').split(' ')[0]; showAlert(`Limite di 2 ${t} raggiunto per oggi (${dt}).`, true, 4000); setSubmitLoading(false, btnEl); return; }
+            const transactionData = { data: cDate, orario: cTime, tipo: type };
+            const transactionsListRef = ref(database, `users/${currentUserId}/transactions`);
+            const newTransactionRef = push(transactionsListRef);
+            set(newTransactionRef, transactionData).then(() => {
+                showAlert(`${type.charAt(0).toUpperCase()+type.slice(1)} rapida registrata (${cTime}).`, false);
+                // onValue aggiornerà la tabella
+            }).catch((error) => {
+                console.error("Errore Quick Action Firebase:", error); showAlert("Errore durante il salvataggio rapido.", true);
+            }).finally(() => setSubmitLoading(false, btnEl));
+        }
+        quickEntryBtn.addEventListener('click', () => handleQuickAction('entrata', quickEntryBtn));
+        quickExitBtn.addEventListener('click', () => handleQuickAction('uscita', quickExitBtn));
+
+        // Delete Transaction
+        window.deleteTransactionWrapper = (firebaseKey) => {
+            const transaction = allTransactions.find(t => t.key === firebaseKey);
+            if (!transaction) { showAlert("Registrazione non trovata.", true); return; }
+            const message = `Sei sicuro di voler eliminare la registrazione (${transaction.tipo}) del ${formatDateTime(transaction.data, transaction.orario)}?`;
+            showConfirm(message, () => deleteTransactionConfirmed(firebaseKey));
+        }
+        function deleteTransactionConfirmed(firebaseKey) {
+            if (!currentUserId || !firebaseKey) { showAlert("Errore: utente o ID registrazione mancante.", true); return; }
+            const transactionRef = ref(database, `users/${currentUserId}/transactions/${firebaseKey}`);
+            remove(transactionRef).then(() => {
+                showAlert("Registrazione eliminata.", false);
+                if (editKeyInput.value === firebaseKey) resetForm();
+                // onValue aggiornerà la tabella
+            }).catch((error) => {
+                console.error("Errore eliminazione Firebase:", error); showAlert("Errore durante l'eliminazione.", true);
+            });
+        }
+
+        // Start Editing Transaction
+        window.startEditTransaction = (firebaseKey) => {
+            const transaction = allTransactions.find(t => t.key === firebaseKey);
+            if (!transaction) { showAlert("Impossibile trovare la registrazione da modificare.", true); return; }
+            dataInput.value = transaction.data; orarioInput.value = transaction.orario; tipoSelect.value = transaction.tipo;
+            editKeyInput.value = firebaseKey; // Usa la chiave Firebase
+            submitButton.textContent = 'Modifica'; submitButton.classList.remove('btn-primary'); submitButton.classList.add('bg-blue-600','hover:bg-blue-500');
+            cancelButton.classList.remove('hidden'); form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        // Cancel Button Listener
+        cancelButton.addEventListener('click', resetForm);
+
+        // ------ Inizializzazione gestita da onAuthStateChanged ------
+
+    </script>
+</body>
+</html>

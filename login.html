@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accesso - Controllo Ore Lavorate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#333">
+    <style>
+        .bg-pattern { background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236B7280' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+        .button-loading { position: relative; color: transparent !important; }
+        .button-loading::after { content: ''; position: absolute; width: 16px; height: 16px; top: 0; left: 0; right: 0; bottom: 0; margin: auto; border: 3px solid transparent; border-top-color: #ffffff; border-radius: 50%; animation: button-loading-spinner 1s linear infinite; }
+        @keyframes button-loading-spinner { from { transform: rotate(0turn); } to { transform: rotate(1turn); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col justify-center bg-pattern">
+    <div class="container max-w-md mx-auto px-2 sm:px-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden mx-2 sm:mx-0">
+            <div class="p-4 sm:p-6">
+                <div class="flex justify-center mb-6 sm:mb-8">
+                    <div class="text-center">
+                        <h1 class="text-2xl sm:text-3xl font-bold">Controllo Ore Lavorate</h1>
+                        <p class="text-gray-400 mt-1 sm:mt-2 text-sm sm:text-base">Accedi o registrati per iniziare</p>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-700 mb-4">
+                    <button id="login-tab" class="flex-1 py-2 px-2 sm:px-4 text-base sm:text-lg font-medium border-b-2 border-indigo-500 text-indigo-400">Accedi</button>
+                    <button id="register-tab" class="flex-1 py-2 px-2 sm:px-4 text-base sm:text-lg font-medium text-gray-400 hover:text-gray-300">Registrati</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-3 sm:space-y-4">
+                    <div><label for="login-email" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Email</label><input type="email" id="login-email" name="email" autocomplete="email" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div><label for="login-password" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Password</label><input type="password" id="login-password" name="current-password" autocomplete="current-password" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div class="flex items-center"><input type="checkbox" id="remember" class="h-4 w-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500"><label for="remember" class="ml-2 text-gray-400 text-sm sm:text-base">Mantieni accesso</label></div>
+                    <div><button type="submit" id="login-submit-btn" class="w-full py-2 sm:py-3 px-4 bg-indigo-600 text-gray-100 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-lg transition duration-150 ease-in-out">Accedi</button></div>
+                </form>
+
+                <!-- Register Form (hidden by default) -->
+                <form id="register-form" class="space-y-3 sm:space-y-4 hidden">
+                    <div><label for="register-name" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Nome completo</label><input type="text" id="register-name" name="name" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div><label for="register-email" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Email</label><input type="email" id="register-email" name="email" autocomplete="email" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div><label for="register-password" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Password</label><input type="password" id="register-password" name="new-password" autocomplete="new-password" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div><label for="register-confirm" class="block text-base sm:text-lg font-medium mb-1 sm:mb-2">Conferma password</label><input type="password" id="register-confirm" name="new-password-confirm" autocomplete="new-password" class="block w-full p-2 sm:p-3 text-base sm:text-lg text-gray-100 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                    <div><button type="submit" id="register-submit-btn" class="w-full py-2 sm:py-3 px-4 bg-indigo-600 text-gray-100 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-lg transition duration-150 ease-in-out">Registrati</button></div>
+                </form>
+
+                <!-- Alert -->
+                <div id="alert" class="hidden mt-3 sm:mt-4 p-3 sm:p-4 rounded-lg text-sm sm:text-base text-white"></div>
+            </div>
+
+            <div class="px-4 py-3 sm:px-6 sm:py-4 bg-gray-700 text-center">
+                <p class="text-gray-400 text-sm sm:text-base">© 2025 Controllo Ore Lavorate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js" type="module"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js" type="module"></script> -->
+
+    <script type="module">
+        // ------ Importa le funzioni Firebase ------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import {
+            getAuth, onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut, // Non usato qui ma importato per coerenza
+            setPersistence,
+            browserLocalPersistence,
+            browserSessionPersistence,
+            updateProfile // Per aggiornare il nome utente
+        } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import {
+            getDatabase, ref, set // Per salvare il profilo utente nel DB
+        } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js";
+
+        // ------ LA TUA Configurazione Firebase SPECIFICA ------
+        const firebaseConfig = {
+            apiKey: "AIzaSyDoyFPX_N1Pd4XQBUw7o6mFdxbZWku5A9g",
+            authDomain: "batabase-ore.firebaseapp.com",
+            databaseURL: "https://batabase-ore-default-rtdb.firebaseio.com",
+            projectId: "batabase-ore",
+            storageBucket: "batabase-ore.firebasestorage.app",
+            messagingSenderId: "656837101213",
+            appId: "1:656837101213:web:a1a358e0b5fdd191c2b674",
+            measurementId: "G-31B4LMZH5F"
+        };
+
+        // ------ Inizializza Firebase ------
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        // const analytics = getAnalytics(app);
+
+        // ------ Riferimenti Elementi DOM ------
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginSubmitBtn = document.getElementById('login-submit-btn');
+        const registerSubmitBtn = document.getElementById('register-submit-btn');
+        const alertBox = document.getElementById('alert');
+        const rememberCheckbox = document.getElementById('remember');
+
+        // ------ Funzione Alert (INVARIATA) ------
+         function showAlert(message, isError = false, duration = 3000) {
+            alertBox.textContent = message;
+            alertBox.classList.remove('hidden', 'opacity-0');
+            alertBox.classList.remove(isError ? 'bg-green-600' : 'bg-red-600');
+            alertBox.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            alertBox.classList.add('transition-opacity', 'duration-300');
+            setTimeout(() => {
+                alertBox.classList.add('opacity-0');
+                setTimeout(() => { alertBox.classList.add('hidden'); }, 300);
+            }, duration);
+        }
+
+        // ------ Funzione Button Loading (INVARIATA) ------
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.disabled = true; button.classList.add('button-loading');
+            } else {
+                button.disabled = false; button.classList.remove('button-loading');
+            }
+        }
+
+        // ------ Funzione Switch Tab (INVARIATA) ------
+        function switchTab(showLogin) {
+            if (showLogin) {
+                loginTab.classList.add('border-indigo-500', 'text-indigo-400');
+                loginTab.classList.remove('text-gray-400', 'hover:text-gray-300');
+                registerTab.classList.remove('border-indigo-500', 'text-indigo-400');
+                registerTab.classList.add('text-gray-400', 'hover:text-gray-300');
+                loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
+            } else {
+                registerTab.classList.add('border-indigo-500', 'text-indigo-400');
+                registerTab.classList.remove('text-gray-400', 'hover:text-gray-300');
+                loginTab.classList.remove('border-indigo-500', 'text-indigo-400');
+                loginTab.classList.add('text-gray-400', 'hover:text-gray-300');
+                registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+            }
+            alertBox.classList.add('hidden');
+            loginForm.reset(); registerForm.reset();
+        }
+
+        loginTab.addEventListener('click', () => switchTab(true));
+        registerTab.addEventListener('click', () => switchTab(false));
+
+
+        // ------ Gestisci la Registrazione (Firebase Auth) ------
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setButtonLoading(registerSubmitBtn, true);
+
+            const name = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim().toLowerCase();
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm').value;
+
+            // --- Validazione ---
+            if (!name || !email || !password || !confirmPassword) { showAlert('Tutti i campi sono obbligatori.', true); setButtonLoading(registerSubmitBtn, false); return; }
+            if (password.length < 6) { showAlert('La password deve essere lunga almeno 6 caratteri.', true); setButtonLoading(registerSubmitBtn, false); return; }
+            if (password !== confirmPassword) { showAlert('Le password non corrispondono.', true); setButtonLoading(registerSubmitBtn, false); return; }
+
+            // --- Creazione Utente Firebase Auth ---
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    console.log('Utente registrato:', user.uid);
+
+                    // Aggiorna il profilo Auth con il nome (best effort)
+                    const profileUpdatePromise = updateProfile(user, { displayName: name })
+                        .then(() => console.log("Profilo Auth aggiornato con nome"))
+                        .catch(err => console.error("Errore aggiornamento profilo Auth:", err));
+
+                    // Salva le info base nel Realtime Database in /userProfiles/{uid}
+                    const userProfileRef = ref(database, `userProfiles/${user.uid}`);
+                    const profileData = { name: name, email: email, createdAt: new Date().toISOString() };
+                    const dbSavePromise = set(userProfileRef, profileData)
+                        .then(() => console.log("Profilo utente salvato nel DB"))
+                        .catch(err => console.error("Errore salvataggio profilo DB:", err)); // Logga ma non blocca
+
+                    // Aspetta che entrambi (o almeno il salvataggio DB) finiscano prima di notificare
+                    Promise.all([profileUpdatePromise, dbSavePromise]).finally(() => {
+                         showAlert('Registrazione completata! Ora puoi accedere.', false);
+                         registerForm.reset();
+                         switchTab(true);
+                         setButtonLoading(registerSubmitBtn, false);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Errore registrazione Firebase:', error);
+                    let message = 'Errore durante la registrazione. Riprova.';
+                    if (error.code === 'auth/email-already-in-use') message = 'Email già registrata. Prova ad accedere.';
+                    else if (error.code === 'auth/weak-password') message = 'Password troppo debole.';
+                    else if (error.code === 'auth/invalid-email') message = 'Formato email non valido.';
+                    showAlert(message, true);
+                    setButtonLoading(registerSubmitBtn, false);
+                });
+        });
+
+
+        // ------ Gestisci il Login (Firebase Auth) ------
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setButtonLoading(loginSubmitBtn, true);
+
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+            const remember = rememberCheckbox.checked;
+
+            if (!email || !password) { showAlert('Email e password sono obbligatori.', true); setButtonLoading(loginSubmitBtn, false); return; }
+
+            // --- Imposta Persistenza ---
+            const persistenceMode = remember ? browserLocalPersistence : browserSessionPersistence;
+            setPersistence(auth, persistenceMode)
+                .then(() => {
+                    // --- Esegui Login Firebase Auth ---
+                    return signInWithEmailAndPassword(auth, email, password);
+                })
+                .then((userCredential) => {
+                    console.log('Login effettuato per:', userCredential.user.uid);
+                    // Il redirect verrà gestito da onAuthStateChanged
+                    // Non è necessario nascondere il loading manualmente qui
+                })
+                .catch((error) => {
+                    console.error('Errore login Firebase:', error);
+                    let message = "Errore durante l'accesso. Riprova.";
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') message = 'Email o password non validi.';
+                    else if (error.code === 'auth/invalid-email') message = 'Formato email non valido.';
+                    else if (error.code === 'auth/too-many-requests') message = 'Troppi tentativi falliti. Riprova più tardi.';
+                    showAlert(message, true);
+                    setButtonLoading(loginSubmitBtn, false); // Nascondi loading solo in caso di errore
+                });
+        });
+
+
+        // ------ Gestione Stato Autenticazione e Redirect ------
+        onAuthStateChanged(auth, (user) => {
+            const path = window.location.pathname;
+            const isLoginPage = path.includes('login.html');
+
+            if (user) {
+                // Utente loggato, se siamo su login.html, reindirizza
+                if (isLoginPage) {
+                    console.log("Utente già loggato, reindirizzamento a index.html...");
+                    window.location.replace('index.html');
+                }
+            } else {
+                // Utente non loggato, rimane su login.html
+                console.log("Nessun utente loggato.");
+            }
+        });
+
+        // Inizializza stato tabs
+        switchTab(true);
+
+    </script>
+</body>
+</html>

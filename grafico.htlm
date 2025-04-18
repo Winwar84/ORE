@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafico Ore Lavorate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <meta name="theme-color" content="#1F2937">
+    <style>
+        /* ... (Stili CSS INVARIATI dalla versione precedente di grafico.html) ... */
+        .hamburger-line { @apply w-6 h-0.5 bg-gray-300 my-1 transition-all duration-300; }
+        .hamburger-active > span:nth-child(1) { @apply rotate-45 translate-y-[6px]; }
+        .hamburger-active > span:nth-child(2) { @apply scale-0; }
+        .hamburger-active > span:nth-child(3) { @apply -rotate-45 -translate-y-[6px]; }
+        .chart-container { position: relative; height: 20rem; width: 100%; }
+        #alert-box { position: fixed; bottom: 1rem; right: 1rem; left: 1rem; sm:left: auto; z-index: 50; transition: opacity 0.3s ease-in-out; }
+        .alert-base { @apply w-full sm:max-w-sm p-3 sm:p-4 rounded-lg text-sm sm:text-base text-white shadow-lg mx-auto; }
+        .btn { @apply inline-flex items-center justify-center py-2 px-4 rounded-lg text-sm sm:text-base font-medium transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50; }
+        .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500; }
+        .btn-secondary { @apply bg-gray-600 text-gray-100 hover:bg-gray-500 focus:ring-gray-500; }
+        .btn-danger { @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500; }
+        #desktop-dropdown-menu { transition: opacity 0.2s ease-out, transform 0.2s ease-out; }
+        .dropdown-item { @apply block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700/70 rounded-md transition-colors duration-150; }
+        .dropdown-item-danger { @apply block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-600/20 hover:text-red-300 rounded-md transition-colors duration-150; }
+        .period-select { @apply w-full md:w-auto bg-gray-700 text-gray-100 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 appearance-none;
+           background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem;
+        }
+        .period-select option { background-color: #374151; color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
+         <!-- Header Section (INVARIATO) -->
+        <header class="flex justify-between items-center mb-4 sm:mb-6">
+             <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-400">Analisi Ore Lavorate</h1>
+            <div class="flex items-center">
+                <span id="user-name" class="hidden sm:inline text-sm sm:text-base text-gray-300 mr-4"></span>
+                <!-- Menu Desktop -->
+                <div class="hidden sm:block relative">
+                    <button id="desktop-menu-btn" type="button" class="btn btn-secondary !p-2 flex items-center justify-center" title="Menu"><div class="flex flex-col justify-between w-[24px] h-[18px]"><span class="w-6 h-0.5 bg-gray-300"></span><span class="w-6 h-0.5 bg-gray-300"></span><span class="w-6 h-0.5 bg-gray-300"></span></div></button>
+                    <div id="desktop-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg z-50 border border-gray-700 origin-top-right">
+                        <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="desktop-menu-btn">
+                             <div class="px-4 pt-2 pb-2 border-b border-gray-700 mb-1"><p class="text-sm font-medium text-gray-200 truncate" id="desktop-user-name-dropdown">Caricamento...</p></div>
+                             <div class="px-1 py-1">
+                                 <a href="index.html" class="dropdown-item flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg><span>Home</span></a>
+                                 <a href="ore-inserite.html" class="dropdown-item flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>Registro Ore</span></a>
+                             </div>
+                             <div class="border-t border-gray-700 mx-1 my-1"></div>
+                             <div class="px-1 py-1"><button id="desktop-logout-btn-dropdown" class="dropdown-item-danger flex items-center gap-2 rounded-md" role="menuitem"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg><span>Logout</span></button></div>
+                        </div>
+                    </div>
+                </div>
+                 <!-- Hamburger Mobile -->
+                 <button id="hamburger-btn" class="sm:hidden p-2 z-50"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button>
+            </div>
+        </header>
+        <!-- Mobile Menu (INVARIATO) -->
+        <div id="mobile-menu" class="hidden fixed inset-0 bg-gray-900 bg-opacity-95 z-40 flex flex-col items-center justify-center p-6">
+             <span id="mobile-user-name" class="block text-lg text-gray-300 mb-8"></span>
+             <nav class="flex flex-col gap-4 w-full max-w-xs text-center">
+                <button type="button" onclick="window.location.href='index.html'" class="btn btn-primary w-full text-lg">Home</button>
+                <button type="button" onclick="window.location.href='ore-inserite.html'" class="btn btn-secondary w-full text-lg">Registro Ore</button>
+                <button type="button" id="mobile-logout-btn" class="btn btn-danger w-full text-lg mt-4">Logout</button>
+            </nav>
+        </div>
+
+        <!-- Filtri e Statistiche (INVARIATO) -->
+        <div class="bg-gray-800 p-2 sm:p-4 rounded-lg mb-4 sm:mb-6 shadow-md">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                <h2 class="text-xl font-semibold mb-2 md:mb-0">Filtra Periodo</h2>
+                <select id="periodo" title="Seleziona periodo di analisi" class="period-select">
+                    <option value="week">Ultimi 7 Giorni</option>
+                    <option value="month" selected>Ultimi 30 Giorni</option>
+                    <option value="3months">Ultimi 3 Mesi</option>
+                    <option value="6months">Ultimi 6 Mesi</option>
+                    <option value="year">Ultimo Anno</option>
+                    <option value="all">Tutto</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4 mb-4">
+                <div class="bg-gray-700 p-3 sm:p-4 rounded-lg text-center md:text-left"><h3 class="text-sm sm:text-base font-medium mb-1 text-gray-400">Ore Totali</h3><p id="ore-totali" class="text-xl sm:text-2xl font-bold">--</p></div>
+                <div class="bg-gray-700 p-3 sm:p-4 rounded-lg text-center md:text-left"><h3 class="text-sm sm:text-base font-medium mb-1 text-gray-400">Media Ore/Giorno</h3><p id="media-giornaliera" class="text-xl sm:text-2xl font-bold">--</p></div>
+                <div class="bg-gray-700 p-3 sm:p-4 rounded-lg text-center md:text-left"><h3 class="text-sm sm:text-base font-medium mb-1 text-gray-400">Giorno Più Produttivo</h3><p id="giorno-piu-lungo" class="text-xl sm:text-2xl font-bold">--</p><p id="data-giorno-piu-lungo" class="text-xs text-gray-400"></p></div>
+            </div>
+        </div>
+
+        <!-- Grafici e Tabella (INVARIATO) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Ore per Giorno della Settimana (Bar) -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md"><h2 class="text-xl font-semibold mb-4 text-center">Ore per Giorno Settimana</h2><div class="chart-container"><canvas id="giornoChart"></canvas><p id="giornoChartNoData" class="hidden absolute inset-0 flex items-center justify-center text-gray-400">Nessun dato per questo grafico</p></div></div>
+            <!-- Andamento Ore (Line) -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md"><h2 class="text-xl font-semibold mb-4 text-center">Andamento Ore Lavorate</h2><div class="chart-container"><canvas id="meseChart"></canvas><p id="meseChartNoData" class="hidden absolute inset-0 flex items-center justify-center text-gray-400">Nessun dato per questo grafico</p></div></div>
+             <!-- Distribuzione Durata Giornate (Pie) -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md"><h2 class="text-xl font-semibold mb-4 text-center">Distribuzione Durata Giornate</h2><div class="chart-container"><canvas id="fasceChart"></canvas><p id="fasceChartNoData" class="hidden absolute inset-0 flex items-center justify-center text-gray-400">Nessun dato per questo grafico</p></div></div>
+            <!-- Ultime Giornate Lavorate (Tabella) -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md"><h2 class="text-xl font-semibold mb-4">Ultime Giornate Lavorate (Periodo Selezionato)</h2><div class="overflow-y-auto h-80"><table class="w-full text-sm sm:text-base text-gray-100"><thead class="bg-gray-700 sticky top-0 z-10"><tr><th class="px-2 sm:px-4 py-2 text-left">Data</th><th class="px-2 sm:px-4 py-2 text-left">Giorno</th><th class="px-2 sm:px-4 py-2 text-right">Ore</th></tr></thead><tbody id="riepilogo-tbody"><tr><td colspan="3" class="text-center py-4 text-gray-400" data-placeholder>Caricamento...</td></tr></tbody></table></div></div>
+        </div>
+    </div>
+
+    <!-- Alert Box Container (INVARIATO) -->
+     <div id="alert-box" class="opacity-0"><div id="alert-content" class="alert-base"></div></div>
+
+     <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js" type="module"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js" type="module"></script> -->
+
+    <script type="module">
+        // ------ Importa le funzioni Firebase ------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js";
+
+        // ------ LA TUA Configurazione Firebase SPECIFICA ------
+         const firebaseConfig = {
+            apiKey: "AIzaSyDoyFPX_N1Pd4XQBUw7o6mFdxbZWku5A9g",
+            authDomain: "batabase-ore.firebaseapp.com",
+            databaseURL: "https://batabase-ore-default-rtdb.firebaseio.com",
+            projectId: "batabase-ore",
+            storageBucket: "batabase-ore.firebasestorage.app",
+            messagingSenderId: "656837101213",
+            appId: "1:656837101213:web:a1a358e0b5fdd191c2b674",
+            measurementId: "G-31B4LMZH5F"
+        };
+
+        // ------ Inizializza Firebase ------
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        // const analytics = getAnalytics(app);
+
+        // ------ GLOBAL ELEMENTS & STATE ------
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const desktopMenuBtn = document.getElementById('desktop-menu-btn');
+        const desktopDropdownMenu = document.getElementById('desktop-dropdown-menu');
+        const periodoSelect = document.getElementById('periodo');
+        const ctxGiorno = document.getElementById('giornoChart')?.getContext('2d');
+        const ctxMese = document.getElementById('meseChart')?.getContext('2d');
+        const ctxFasce = document.getElementById('fasceChart')?.getContext('2d');
+        const riepilogoTbody = document.getElementById('riepilogo-tbody');
+        const alertBox = document.getElementById('alert-box');
+        const alertContent = document.getElementById('alert-content');
+        const giornoChartNoData = document.getElementById('giornoChartNoData');
+        const meseChartNoData = document.getElementById('meseChartNoData');
+        const fasceChartNoData = document.getElementById('fasceChartNoData');
+
+        let currentUser = null;
+        let currentUserId = null;
+        let allTransactions = []; // Dati grezzi da Firebase
+        let allDailyRecords = []; // Dati processati per giorno
+        let filteredDailyRecords = []; // Dati filtrati per periodo
+        let giornoChart, meseChart, fasceChart; // Istanze Chart
+
+        const chartColors = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+        const giorniSettimana = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+        // const nomiMesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']; // Non usato qui
+
+         // ------ ALERT FUNCTION ------
+        function showAlert(message, isError = false, duration = 3000) {
+            alertContent.textContent = message;
+            alertContent.classList.remove(isError ? 'bg-green-600' : 'bg-red-600');
+            alertContent.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            alertBox.classList.remove('opacity-0');
+            clearTimeout(alertBox.timer);
+            alertBox.timer = setTimeout(() => { alertBox.classList.add('opacity-0'); }, duration);
+        }
+
+         // ------ Funzione Helper per popolare i nomi utente ------
+         function populateUserNames(user) {
+            const userNameEl = document.getElementById('user-name');
+            const mobileUserNameEl = document.getElementById('mobile-user-name');
+            const desktopDropdownUserNameEl = document.getElementById('desktop-user-name-dropdown');
+            // Gestisce caso utente nullo (logout)
+            const displayName = user ? (user.displayName || user.email || 'Utente') : 'Utente';
+            const greeting = user ? `Ciao, ${user.displayName || user.email.split('@')[0]}` : 'Ciao';
+            if (userNameEl) userNameEl.textContent = greeting;
+            if (mobileUserNameEl) mobileUserNameEl.textContent = greeting;
+            if (desktopDropdownUserNameEl) desktopDropdownUserNameEl.textContent = displayName;
+        }
+
+        // ------ AUTHENTICATION & INITIALIZATION ------
+        console.log("Grafico: Impostazione onAuthStateChanged...");
+        onAuthStateChanged(auth, (user) => {
+            console.log("Grafico: Stato Auth cambiato:", user ? `Utente ${user.email}` : 'Nessun utente');
+            const isLoginPage = window.location.pathname.includes('login.html');
+            if (user) {
+                currentUser = user;
+                currentUserId = user.uid;
+                populateUserNames(user);
+                if (isLoginPage) { window.location.replace('grafico.html'); return; }
+                 initializePage(); // Avvia caricamento dati e UI
+            } else {
+                currentUser = null;
+                currentUserId = null;
+                 allTransactions = []; allDailyRecords = []; filteredDailyRecords = [];
+                 updateDisplayForPeriod(); // Mostra grafici/tabelle vuote
+                 populateUserNames(null); // Pulisci nome utente
+                if (!isLoginPage) { window.location.replace('login.html'); }
+            }
+        });
+
+        // ------ MENU MANAGEMENT & LOGOUT ------
+        hamburgerBtn.addEventListener('click', (e) => { /* ... codice invariato ... */ e.stopPropagation(); hamburgerBtn.classList.toggle('hamburger-active'); mobileMenu.classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden', !mobileMenu.classList.contains('hidden')); if (desktopDropdownMenu && !desktopDropdownMenu.classList.contains('hidden')) { desktopDropdownMenu.classList.add('hidden'); } });
+        if (desktopMenuBtn && desktopDropdownMenu) { desktopMenuBtn.addEventListener('click', (e) => { /* ... codice invariato ... */ e.stopPropagation(); desktopDropdownMenu.classList.toggle('hidden'); if (!mobileMenu.classList.contains('hidden')) { mobileMenu.classList.add('hidden'); hamburgerBtn.classList.remove('hamburger-active'); document.body.classList.remove('overflow-hidden'); } }); }
+        document.addEventListener('click', (e) => { /* ... codice invariato ... */ if (desktopDropdownMenu && !desktopDropdownMenu.classList.contains('hidden')) { if (!desktopDropdownMenu.contains(e.target) && !desktopMenuBtn.contains(e.target)) { desktopDropdownMenu.classList.add('hidden'); } } if (!mobileMenu.classList.contains('hidden')) { if (!mobileMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) { mobileMenu.classList.add('hidden'); hamburgerBtn.classList.remove('hamburger-active'); document.body.classList.remove('overflow-hidden'); } } });
+        function handleLogout() { if (confirm('Sei sicuro di voler effettuare il logout?')) { signOut(auth).catch((error) => { console.error("Errore logout:", error); showAlert('Errore logout.', true); }); } }
+        const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+        const desktopLogoutBtnDropdown = document.getElementById('desktop-logout-btn-dropdown');
+        if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', handleLogout);
+        if (desktopLogoutBtnDropdown) desktopLogoutBtnDropdown.addEventListener('click', handleLogout);
+
+        // ------ DATA LOADING & PROCESSING (Firebase Get) ------
+         function loadData() {
+             if (!currentUserId) {
+                 console.log("loadData: Utente non loggato.");
+                 updateDisplayForPeriod(); // Mostra UI vuota
+                 return Promise.reject("Utente non autenticato");
+             }
+             console.log("Caricamento dati grafico per:", currentUserId);
+             updateStats([]); // Mostra stats vuote durante caricamento
+             riepilogoTbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-400" data-placeholder>Caricamento...</td></tr>';
+             toggleNoDataMessage('giornoChart', true); toggleNoDataMessage('meseChart', true); toggleNoDataMessage('fasceChart', true);
+
+             const transactionsRef = ref(database, `users/${currentUserId}/transactions`);
+             return get(transactionsRef).then((snapshot) => {
+                 allTransactions = [];
+                 if (snapshot.exists()) {
+                     const data = snapshot.val();
+                     allTransactions = Object.entries(data).map(([key, value]) => ({ key: key, ...value }));
+                     allTransactions.sort((a, b) => { try { const dA = new Date(`${a.data}T${a.orario}`); const dB = new Date(`${b.data}T${b.orario}`); if (isNaN(dA) || isNaN(dB)) return 0; return dA - dB; } catch(e) { return 0; } });
+                     console.log("Dati caricati con get():", allTransactions.length);
+                 } else { console.log("Nessun dato trovato per l'utente."); }
+                 processData(); // Processa i dati DOPO averli caricati
+             }).catch((error) => {
+                 console.error("Errore lettura Firebase (get):", error);
+                 showAlert("Errore nel caricamento dati.", true);
+                 riepilogoTbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-red-400" data-placeholder>Errore caricamento.</td></tr>';
+                 updateStats([]);
+                 throw error;
+             });
+         }
+
+         function groupTransactionsByDate(transactions) { /* ... codice invariato ... */ const grouped = {}; transactions.forEach(t => { if (!t || !t.data || !t.orario || !t.tipo) return; if (!grouped[t.data]) { grouped[t.data] = { entrata: null, uscita: null, dateObj: null }; try { grouped[t.data].dateObj = new Date(t.data); } catch(e) {} } if (t.tipo === 'entrata' && !grouped[t.data].entrata) { grouped[t.data].entrata = t.orario; } else if (t.tipo === 'uscita') { grouped[t.data].uscita = t.orario; } }); return grouped; }
+         function calculateDailyRecords(groupedData) { /* ... codice invariato (include nomeGiorno) ... */ const records = []; for (const dateStr in groupedData) { const entry = groupedData[dateStr]; if (entry.entrata && entry.uscita && entry.dateObj && !isNaN(entry.dateObj)) { try { const start = new Date(`1970-01-01T${entry.entrata}:00`); const end = new Date(`1970-01-01T${entry.uscita}:00`); if (isNaN(start) || isNaN(end)) throw new Error("Invalid time format"); let diff = end - start; if (diff < 0) diff = 0; const totalMinutes = Math.max(0, Math.floor(diff / 60000)); const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60; const totalHoursDecimal = totalMinutes / 60; records.push({ data: dateStr, dateObj: entry.dateObj, oreLavorate: totalHoursDecimal, formattedHours: `${hours}h ${minutes}m`, giornoSettimana: entry.dateObj.getDay(), nomeGiorno: giorniSettimana[entry.dateObj.getDay()] }); } catch (e) { console.error(`Errore calcolo ore per ${dateStr}:`, e); } } } return records; }
+         function processData() {
+             const grouped = groupTransactionsByDate(allTransactions);
+             allDailyRecords = calculateDailyRecords(grouped);
+             // Non serve ordinare qui, filterByPeriod lo farà se necessario e la tabella riepilogo riordina per display
+             console.log("Dati processati in record giornalieri:", allDailyRecords.length);
+         }
+
+        // ------ FILTERING ------
+        function filterByPeriod(dailyData, period) { /* ... codice invariato ... */ const today = new Date(); today.setHours(23, 59, 59, 999); let startDate = new Date(); startDate.setHours(0, 0, 0, 0); switch (period) { case 'week': startDate.setDate(today.getDate() - 7); break; case 'month': startDate.setMonth(today.getMonth() - 1); break; case '3months': startDate.setMonth(today.getMonth() - 3); break; case '6months': startDate.setMonth(today.getMonth() - 6); break; case 'year': startDate.setFullYear(today.getFullYear() - 1); break; case 'all': return [...dailyData]; default: startDate.setMonth(today.getMonth() - 1); } return dailyData.filter(item => { try { return item.dateObj && !isNaN(item.dateObj) && item.dateObj >= startDate && item.dateObj <= today; } catch(e) { return false; } }); }
+
+        // ------ CHART DATA PREPARATION ------
+        function prepareDataGiorno(records) { /* ... codice invariato ... */ const orePerGiorno = Array(7).fill(0); records.forEach(r => { orePerGiorno[r.giornoSettimana] += r.oreLavorate; }); return { labels: giorniSettimana, data: orePerGiorno.map(h => h.toFixed(1)) }; }
+        function prepareDataTrend(records) { /* ... codice invariato ... */ const dataPoints = records.map(r => ({ x: r.dateObj.getTime(), y: parseFloat(r.oreLavorate.toFixed(1)) })); dataPoints.sort((a, b) => a.x - b.x); return dataPoints; }
+        function prepareDataFasce(records) { /* ... codice invariato ... */ const fasce = [ { label: '< 4h', min: 0, max: 4, count: 0 }, { label: '4-6h', min: 4, max: 6, count: 0 }, { label: '6-8h', min: 6, max: 8, count: 0 }, { label: '8-10h', min: 8, max: 10, count: 0 }, { label: '> 10h', min: 10, max: Infinity, count: 0 } ]; records.forEach(r => { const ore = r.oreLavorate; for (let f of fasce) { if (ore >= f.min && ore < f.max) { f.count++; break; } } }); const activeFasce = fasce.filter(f => f.count > 0); return { labels: activeFasce.map(f => f.label), data: activeFasce.map(f => f.count) }; }
+
+        // ------ CHART RENDERING ------
+         function toggleNoDataMessage(chartElemId, show) { /* ... codice invariato ... */ const noDataEl = document.getElementById(`${chartElemId}NoData`); const canvasEl = document.getElementById(chartElemId); if (noDataEl && canvasEl) { noDataEl.classList.toggle('hidden', !show); canvasEl.classList.toggle('hidden', show); } }
+         function createOrUpdateChart(chartInstance, context, config, chartElemId) { /* ... codice invariato ... */ if (!context) { console.error(`Contesto non trovato per ${chartElemId}`); return null; } const hasData = config.data.datasets.some(ds => ds.data && ds.data.length > 0 && ds.data.some(dp => (typeof dp === 'object' ? dp.y : dp) > 0)); toggleNoDataMessage(chartElemId, !hasData); if (chartInstance) { chartInstance.data.labels = config.data.labels; chartInstance.data.datasets = config.data.datasets; if (config.options.scales) { chartInstance.options.scales = config.options.scales; } if (config.options.plugins) { chartInstance.options.plugins = config.options.plugins; } chartInstance.update(); if (!hasData) { const canvasEl = document.getElementById(chartElemId); if(canvasEl) canvasEl.classList.add('hidden'); } } else if (hasData) { chartInstance = new Chart(context, config); } return chartInstance; }
+        function renderGiornoChart(data) { /* ... codice invariato ... */ const config = { type: 'bar', data: { labels: data.labels, datasets: [{ label: 'Ore Lavorate', data: data.data, backgroundColor: chartColors, borderColor: chartColors.map(c => c + 'B3'), borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'x', scales: { y: { beginAtZero: true, title: { display: true, text: 'Ore Totali', color: '#d1d5db' }, ticks: { color: '#d1d5db'} }, x: { ticks: { color: '#d1d5db'}} }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} ore` } } } } }; giornoChart = createOrUpdateChart(giornoChart, ctxGiorno, config, 'giornoChart'); }
+        function renderTrendChart(dataPoints) { /* ... codice invariato ... */ const config = { type: 'line', data: { datasets: [{ label: 'Ore Lavorate Giornaliere', data: dataPoints, borderColor: chartColors[1], backgroundColor: chartColors[1] + '33', tension: 0.1, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Ore', color: '#d1d5db' }, ticks: { color: '#d1d5db'} }, x: { type: 'time', time: { unit: determineTimeUnit(dataPoints), tooltipFormat: 'dd MMM yyyy', displayFormats: { day: 'dd MMM', week: 'dd MMM', month: 'MMM yy' } }, title: { display: true, text: 'Data', color: '#d1d5db' }, ticks: { color: '#d1d5db', maxRotation: 45, minRotation: 0 } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (tooltipItems) => { try { const date = new Date(tooltipItems[0].parsed.x); return date.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }); } catch(e) { return ''; } }, label: (context) => `${context.dataset.label}: ${context.parsed.y} ore` } } } } }; meseChart = createOrUpdateChart(meseChart, ctxMese, config, 'meseChart'); }
+        function determineTimeUnit(dataPoints) { /* ... codice invariato ... */ if (!dataPoints || dataPoints.length < 2) return 'day'; const firstDate = dataPoints[0].x; const lastDate = dataPoints[dataPoints.length - 1].x; const rangeDays = (lastDate - firstDate) / (1000 * 60 * 60 * 24); if (rangeDays <= 14) return 'day'; if (rangeDays <= 90) return 'week'; return 'month'; }
+        function renderFasceChart(data) { /* ... codice invariato ... */ const config = { type: 'pie', data: { labels: data.labels, datasets: [{ data: data.data, backgroundColor: chartColors, hoverOffset: 8, borderColor: '#1f2937', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#d1d5db', boxWidth: 12, padding: 15 } }, tooltip: { callbacks: { label: function(context) { const label = context.label || ''; const value = context.raw || 0; const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0; return `${label}: ${value} giorni (${percentage}%)`; } } } } } }; fasceChart = createOrUpdateChart(fasceChart, ctxFasce, config, 'fasceChart'); }
+
+        // ------ TABLE & STATS UPDATE ------
+        function updateRiepilogoTable(records) { /* ... codice invariato ... */ riepilogoTbody.innerHTML = ''; if (records.length === 0) { riepilogoTbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-400" data-placeholder>Nessuna giornata lavorata nel periodo selezionato.</td></tr>'; return; } records.sort((a, b) => (b.dateObj && a.dateObj) ? b.dateObj - a.dateObj : 0); records.forEach(record => { const row = document.createElement('tr'); const formattedDate = record.dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }); row.innerHTML = `<td class="px-2 sm:px-4 py-2 whitespace-nowrap">${formattedDate}</td><td class="px-2 sm:px-4 py-2">${record.nomeGiorno}</td><td class="px-2 sm:px-4 py-2 text-right">${record.formattedHours} (${record.oreLavorate.toFixed(1)}h)</td>`; riepilogoTbody.appendChild(row); }); }
+        function updateStats(records) { /* ... codice invariato ... */ const oreTotali = records.reduce((sum, r) => sum + r.oreLavorate, 0); const mediaGiornaliera = records.length > 0 ? oreTotali / records.length : 0; document.getElementById('ore-totali').textContent = `${oreTotali.toFixed(1)} ore`; document.getElementById('media-giornaliera').textContent = `${mediaGiornaliera.toFixed(1)} ore`; if (records.length > 0) { const giornoPiuLungo = records.reduce((max, r) => (r.oreLavorate > max.oreLavorate ? r : max), {oreLavorate: -1}); if (giornoPiuLungo.oreLavorate > -1) { const dataPiuLungaFormatted = giornoPiuLungo.dateObj.toLocaleDateString('it-IT'); document.getElementById('giorno-piu-lungo').textContent = `${giornoPiuLungo.oreLavorate.toFixed(1)} ore`; document.getElementById('data-giorno-piu-lungo').textContent = `(${dataPiuLungaFormatted})`; } else { document.getElementById('giorno-piu-lungo').textContent = '--'; document.getElementById('data-giorno-piu-lungo').textContent = ''; } } else { document.getElementById('giorno-piu-lungo').textContent = '--'; document.getElementById('data-giorno-piu-lungo').textContent = ''; } }
+
+        // ------ MAIN UPDATE FUNCTION ------
+         function updateDisplayForPeriod() {
+             console.log("Aggiornamento display per periodo:", periodoSelect?.value || 'default');
+             const period = periodoSelect?.value || 'month'; // Default a 'month' se select non è pronto
+             filteredDailyRecords = filterByPeriod(allDailyRecords, period);
+             console.log(`Filtrati ${filteredDailyRecords.length} record giornalieri.`);
+             updateStats(filteredDailyRecords);
+             updateRiepilogoTable(filteredDailyRecords);
+             renderGiornoChart(prepareDataGiorno(filteredDailyRecords));
+             renderTrendChart(prepareDataTrend(filteredDailyRecords));
+             renderFasceChart(prepareDataFasce(filteredDailyRecords));
+         }
+
+        // ------ EVENT LISTENERS ------
+        function setupEventListeners() {
+            if (periodoSelect) {
+                periodoSelect.removeEventListener('change', updateDisplayForPeriod); // Rimuovi vecchio listener se esiste
+                periodoSelect.addEventListener('change', updateDisplayForPeriod);
+            } else {
+                console.error("Elemento periodoSelect non trovato!");
+            }
+        }
+
+        // ------ INITIALIZATION ------
+        function initializePage() {
+            console.log("Grafico: Inizializzazione pagina...");
+             loadData().then(() => {
+                 console.log("Grafico: Dati caricati, aggiorno display e imposto listeners.");
+                 // processData() è già chiamato dentro loadData con successo
+                 updateDisplayForPeriod(); // Renderizza con periodo di default
+                 setupEventListeners();
+             }).catch(error => {
+                 console.error("Grafico: Inizializzazione fallita:", error);
+                 // L'errore è già stato gestito/mostrato da loadData
+                 // Assicurati che l'UI sia in uno stato "errore" o "vuoto"
+                 updateStats([]);
+                 updateRiepilogoTable([]);
+                 // toggleNoDataMessage per i grafici dovrebbe essere già true
+             });
+         }
+         // L'inizializzazione è chiamata da onAuthStateChanged
+
+         console.log("Grafico: Script caricato e pronto.");
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amministrazione - Controllo Ore Lavorate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#333">
+     <style>
+        /* ... (stili CSS invariati, inclusi .button-loading, modal, etc) ... */
+        .button-loading { position: relative; color: transparent !important; cursor: wait; }
+        .button-loading::after { content: ''; position: absolute; width: 16px; height: 16px; top: 0; left: 0; right: 0; bottom: 0; margin: auto; border: 3px solid transparent; border-top-color: #ffffff; border-radius: 50%; animation: button-loading-spinner 1s linear infinite; }
+        @keyframes button-loading-spinner { from { transform: rotate(0turn); } to { transform: rotate(1turn); } }
+        #alert-box { position: fixed; bottom: 1rem; right: 1rem; z-index: 60; transition: opacity 0.3s ease-in-out; max-width: 90%; }
+        #user-transactions-modal { background-color: rgba(0, 0, 0, 0.75); }
+        .modal-content { max-height: 85vh; }
+        .sortable { cursor: pointer; user-select: none; } .sortable:hover { color: #a5b4fc; }
+        .sort-indicator { display: inline-block; width: 1em; text-align: center; }
+        .btn { @apply inline-flex items-center justify-center py-2 px-4 rounded-lg font-medium transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50; } /* Classe base btn aggiornata */
+        .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 text-base; } /* Rimosso text-gray-100, aggiunto text-white */
+        .btn-secondary { @apply bg-gray-600 text-gray-100 hover:bg-gray-500 text-sm focus:ring-gray-500; } /* Aggiunto focus:ring */
+        .btn-danger { @apply bg-red-600 text-white hover:bg-red-700 text-sm focus:ring-red-500; } /* Rimosso text-gray-100, aggiunto text-white e focus:ring */
+        .btn-danger-outline { @apply bg-transparent border border-red-700 text-red-400 rounded-lg hover:bg-red-800 hover:text-red-100 text-sm transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900; } /* Aggiunto focus styling */
+        .th-left { @apply px-4 py-2 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider; } /* Migliorato stile header tabella */
+        .th-center { @apply px-4 py-2 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider; }
+        .td-center { @apply px-4 py-2 text-center; }
+        .alert-base { @apply max-w-sm p-3 sm:p-4 rounded-lg text-sm sm:text-base text-white shadow-lg; }
+        .modal-container { @apply fixed inset-0 flex items-center justify-center z-50 p-4; } /* Aggiunto flex */
+        .modal-overlay { @apply fixed inset-0 bg-black bg-opacity-70 transition-opacity; }
+        .modal-dialog { @apply relative bg-gray-800 p-6 rounded-lg max-w-md w-full shadow-xl border border-gray-700; }
+        .modal-title { @apply text-lg font-bold mb-4 text-yellow-400; }
+        .modal-text { @apply mb-6 text-gray-200 text-sm; }
+        .modal-actions { @apply flex justify-end space-x-4; }
+        /* Input field style per admin login - Testo bianco su sfondo scuro */
+        .admin-input {
+             @apply block w-full p-3 text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 border;
+             color: #f3f4f6; /* Testo bianco/grigio chiaro */
+             background-color: #374151; /* Sfondo grigio scuro */
+             border-color: #4b5563; /* Bordo grigio medio */
+             caret-color: #f3f4f6; /* Cursore bianco */
+        }
+        .admin-input::placeholder {
+             color: #9ca3af; /* Grigio chiaro per placeholder */
+        }
+
+     </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold">Pannello Amministrazione</h1>
+            <div id="header-buttons" class="hidden"> <!-- Inizialmente nascosto -->
+                <button id="logout-btn" class="btn btn-danger text-sm">Logout Admin</button> <!-- Usato btn e btn-danger -->
+            </div>
+        </div>
+
+        <!-- Admin Login Form -->
+        <div id="admin-login-section" class="bg-gray-800 p-6 rounded-lg mb-6 shadow-md"> <!-- Inizialmente visibile -->
+            <h2 class="text-2xl font-semibold mb-4">Accesso Amministratore</h2>
+            <form id="admin-login-form" class="space-y-4">
+                <div>
+                    <label for="admin-email" class="block text-base font-medium mb-2">Email Admin</label>
+                    <!-- Applicata la classe .admin-input per visibilità testo -->
+                    <input type="email" id="admin-email" autocomplete="username" class="admin-input" placeholder="Inserisci email admin" required>
+                </div>
+                <div>
+                    <label for="admin-password" class="block text-base font-medium mb-2">Password</label>
+                     <!-- Applicata la classe .admin-input per visibilità testo -->
+                    <input type="password" id="admin-password" autocomplete="current-password" class="admin-input" placeholder="Inserisci password" required>
+                </div>
+                <div>
+                    <button type="submit" id="login-submit-btn" class="btn btn-primary w-full py-3">Accedi</button>
+                </div>
+            </form>
+             <div id="login-alert" class="hidden mt-4 p-3 rounded-lg text-sm text-white"></div> <!-- Alert specifico login -->
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" class="hidden"> <!-- Inizialmente nascosto -->
+            <!-- User Management -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-lg mb-6 shadow-md">
+                 <h2 class="text-2xl font-semibold mb-4">Gestione Utenti</h2>
+                 <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                     <div><span class="text-base">Utenti registrati (profili DB): <span id="user-count" class="font-semibold">0</span></span></div>
+                     <div class="flex flex-wrap gap-2">
+                         <button id="select-all-btn" class="btn btn-secondary py-2 px-3 text-xs sm:text-sm">Seleziona/Deseleziona</button>
+                         <button id="delete-selected-btn" class="btn btn-danger py-2 px-3 text-xs sm:text-sm opacity-50 cursor-not-allowed" disabled>Elimina Dati (<span id="selected-count">0</span>)</button>
+                     </div>
+                 </div>
+                 <div class="overflow-x-auto border border-gray-700 rounded-lg"> <!-- Aggiunto bordo e arrotondamento tabella -->
+                     <table class="w-full text-sm text-gray-100">
+                         <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-2 py-2 w-10 text-center"><input type="checkbox" id="select-all-header-checkbox" class="h-4 w-4 rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500"></th>
+                                <th class="th-left">UID</th>
+                                <th class="th-left">Nome</th>
+                                <th class="th-left">Email</th>
+                                <th class="th-left">Registrato il</th>
+                                <th class="th-center">Azioni</th>
+                            </tr>
+                        </thead>
+                         <tbody id="users-table-body" class="divide-y divide-gray-700"> <!-- Aggiunto divisore righe -->
+                            <tr><td colspan="6" class="td-center text-gray-400 py-6" data-placeholder>Caricamento utenti...</td></tr>
+                         </tbody>
+                     </table>
+                 </div>
+                  <p class="mt-2 text-xs text-yellow-400">Nota: L'eliminazione rimuove i dati dal database ma non l'account da Firebase Auth (richiede Cloud Function).</p>
+            </div>
+
+            <!-- System Actions -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-lg shadow-md">
+                 <h2 class="text-2xl font-semibold mb-4">Azioni di Sistema</h2>
+                 <div class="flex flex-col sm:flex-row flex-wrap gap-3">
+                     <button id="reset-all-btn" class="btn btn-danger-outline py-2 px-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>Elimina TUTTI i Dati Utente (DB)</button>
+                     <button id="delete-admin-btn" class="btn py-2 px-4 bg-yellow-700 border border-yellow-600 text-yellow-100 rounded-lg hover:bg-yellow-800 text-sm transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-900"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Elimina Account Admin ATTUALE</button> <!-- Usato btn base -->
+                 </div>
+                 <p class="mt-4 text-xs text-gray-400"><strong class="text-red-400 font-semibold">ATTENZIONE:</strong> Azioni irreversibili. Reset All elimina SOLO i dati dal DB, non gli account Auth. Delete Admin elimina l'account Auth corrente e i dati DB associati.</p>
+            </div>
+        </div>
+
+        <!-- Alert box Globale -->
+         <div id="alert-box" class="opacity-0"><div id="alert-content" class="alert-base"></div></div>
+
+        <!-- Modal di conferma Generale -->
+        <div id="confirm-modal" class="modal-container hidden"><div class="modal-overlay" aria-hidden="true"></div><div class="modal-dialog"><h3 id="confirm-title" class="modal-title">Conferma</h3><p id="confirm-message" class="modal-text">Sei sicuro?</p><div class="modal-actions"><button id="cancel-btn" class="btn btn-secondary">Annulla</button><button id="confirm-btn" class="btn btn-danger">Conferma</button></div></div></div>
+
+        <!-- Modal Visualizza Transazioni Utente -->
+        <div id="user-transactions-modal" class="fixed inset-0 hidden items-center justify-center z-[55] p-4">
+             <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" aria-hidden="true" onclick="hideUserTransactionsModal()"></div>
+             <div class="relative bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-3xl shadow-xl border border-gray-700 modal-content overflow-y-auto">
+                 <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-700"><h3 id="modal-user-name" class="text-xl font-semibold text-indigo-400">Transazioni Utente</h3><button id="modal-close-btn" class="p-1 text-gray-400 hover:text-white" title="Chiudi"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm"><div class="bg-gray-700 p-3 rounded-md shadow"><span class="text-gray-400 block text-xs uppercase tracking-wider">Giorni Lavorati</span><strong id="modal-total-days" class="text-lg font-semibold">--</strong></div><div class="bg-gray-700 p-3 rounded-md shadow"><span class="text-gray-400 block text-xs uppercase tracking-wider">Ore Totali</span><strong id="modal-total-hours" class="text-lg font-semibold">--</strong></div></div>
+                 <div class="overflow-x-auto"><table class="w-full text-sm text-gray-100"><thead class="bg-gray-700 sticky top-0 z-10"><tr><th class="px-4 py-2 text-left sortable" onclick="sortModalTransactions('data')">Data<span class="sort-indicator"></span></th><th class="px-4 py-2 text-left sortable" onclick="sortModalTransactions('ora')">Ora<span class="sort-indicator"></span></th><th class="px-4 py-2 text-left sortable" onclick="sortModalTransactions('tipo')">Tipo<span class="sort-indicator"></span></th></tr></thead><tbody id="modal-transactions-table-body" class="divide-y divide-gray-700"><tr><td colspan="3" class="td-center text-gray-400 py-6" data-placeholder>Caricamento...</td></tr></tbody></table></div>
+             </div>
+        </div>
+    </div>
+
+     <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js" type="module"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js" type="module"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js" type="module"></script> -->
+
+    <script type="module">
+        // ------ Importa le funzioni Firebase ------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import {
+            getAuth, onAuthStateChanged, signOut,
+            signInWithEmailAndPassword, setPersistence, browserSessionPersistence,
+            deleteUser
+        } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getDatabase, ref, get, remove } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics.js";
+
+         // ------ LA TUA Configurazione Firebase SPECIFICA ------
+         const firebaseConfig = {
+            apiKey: "AIzaSyDoyFPX_N1Pd4XQBUw7o6mFdxbZWku5A9g",
+            authDomain: "batabase-ore.firebaseapp.com",
+            databaseURL: "https://batabase-ore-default-rtdb.firebaseio.com",
+            projectId: "batabase-ore",
+            storageBucket: "batabase-ore.firebasestorage.app",
+            messagingSenderId: "656837101213",
+            appId: "1:656837101213:web:a1a358e0b5fdd191c2b674",
+            measurementId: "G-31B4LMZH5F"
+        };
+
+        // ------ Inizializza Firebase ------
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        // const analytics = getAnalytics(app);
+
+        // ------ Riferimenti DOM ------
+        const usersTableBody = document.getElementById('users-table-body');
+        const userCountSpan = document.getElementById('user-count');
+        const userTransactionsModal = document.getElementById('user-transactions-modal');
+        const modalUserName = document.getElementById('modal-user-name');
+        const modalTransactionsTableBody = document.getElementById('modal-transactions-table-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalTotalDays = document.getElementById('modal-total-days');
+        const modalTotalHours = document.getElementById('modal-total-hours');
+        const adminLoginSection = document.getElementById('admin-login-section');
+        const adminPanel = document.getElementById('admin-panel');
+        const headerButtons = document.getElementById('header-buttons');
+        const adminLoginForm = document.getElementById('admin-login-form');
+        const loginSubmitBtn = document.getElementById('login-submit-btn');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const selectAllHeaderCheckbox = document.getElementById('select-all-header-checkbox');
+        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const resetAllBtn = document.getElementById('reset-all-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const deleteAdminBtn = document.getElementById('delete-admin-btn');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmBtn = document.getElementById('confirm-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const alertBox = document.getElementById('alert-box');
+        const alertContent = document.getElementById('alert-content');
+        const loginAlert = document.getElementById('login-alert');
+
+        // ------ State Variables ------
+        let selectedUserIds = [];
+        let allUsersData = [];
+        let currentConfirmCallback = null;
+        let modalTransactions = [];
+        let modalSortState = { column: 'data', direction: 'desc' };
+        let adminUser = null;
+        // <<< --- EMAIL ADMIN INSERITA --- >>>
+        const ADMIN_EMAIL = "winwar84@gmail.com";
+
+        // ------ Utility Functions ------
+        function showAdminAlert(message, isError = false, duration = 3000) { /* ... codice invariato ... */ alertContent.textContent = message; alertContent.parentElement.classList.remove('opacity-0'); alertContent.classList.remove(isError ? 'bg-green-600' : 'bg-red-600'); alertContent.classList.add(isError ? 'bg-red-600' : 'bg-green-600'); clearTimeout(alertBox.timer); alertBox.timer = setTimeout(() => { alertContent.parentElement.classList.add('opacity-0'); }, duration); }
+        function showLoginAlert(message, isError = false, duration = 4000) { if (!loginAlert) return; loginAlert.textContent = message; loginAlert.classList.remove('hidden'); loginAlert.classList.remove(isError ? 'bg-green-500' : 'bg-red-600'); loginAlert.classList.add(isError ? 'bg-red-600' : 'bg-green-500'); /* Non nasconde auto */ }
+        function hideLoginAlert() { if (loginAlert) loginAlert.classList.add('hidden'); }
+        function setButtonLoading(b, l) { if (l) { b.disabled = true; b.classList.add('button-loading'); } else { b.disabled = false; b.classList.remove('button-loading'); } }
+
+        // ------ Modal Functions ------
+        function showConfirmModal(t, m, c) { confirmTitle.textContent = t; confirmMessage.textContent = m; currentConfirmCallback = c; confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); }
+        function hideConfirmModal() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); currentConfirmCallback = null; }
+        function showUserTransactionsModal() { userTransactionsModal.classList.remove('hidden'); userTransactionsModal.classList.add('flex'); }
+        function hideUserTransactionsModal() { userTransactionsModal.classList.add('hidden'); userTransactionsModal.classList.remove('flex'); modalTransactionsTableBody.innerHTML = '<tr><td colspan="3" class="td-center text-gray-400 py-6" data-placeholder>Caricamento...</td></tr>'; modalUserName.textContent = 'Transazioni Utente'; modalTotalDays.textContent = '--'; modalTotalHours.textContent = '--'; modalTransactions = []; } // Aggiunto data-placeholder
+        if(modalCloseBtn) modalCloseBtn.addEventListener('click', hideUserTransactionsModal);
+        if(userTransactionsModal) userTransactionsModal.addEventListener('click', (e) => { if (e.target === userTransactionsModal) hideUserTransactionsModal(); });
+
+        // ------ Core Logic: Show/Hide Sections ------
+        function showAdminLoginScreen(message = null) { console.log("Mostrando schermata login admin..."); adminLoginSection.classList.remove('hidden'); adminPanel.classList.add('hidden'); headerButtons.classList.add('hidden'); hideLoginAlert(); if (message) showLoginAlert(message, true); }
+        function showAdminPanel() { console.log("Mostrando pannello admin..."); adminLoginSection.classList.add('hidden'); adminPanel.classList.remove('hidden'); headerButtons.classList.remove('hidden'); hideLoginAlert(); setupAdminPanelListeners(); }
+
+         // ------ Gestione Stato Autenticazione (Admin) ------
+        console.log("Impostazione onAuthStateChanged per admin...");
+        onAuthStateChanged(auth, (user) => {
+            console.log("Stato Auth cambiato:", user ? `Utente ${user.email}` : 'Nessun utente');
+            const isAdminPage = window.location.pathname.includes('admin.html');
+            if (!isAdminPage) { console.log("Non siamo su admin.html, ignoro."); return; }
+
+            if (user) {
+                adminUser = user;
+                console.log("Verifica admin - Email utente:", user.email, "| Email Admin attesa:", ADMIN_EMAIL);
+                if (user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                    console.log("ADMIN CONFERMATO:", user.uid);
+                    showAdminPanel();
+                    loadUsersFromProfiles();
+                } else {
+                    console.log("Utente loggato MA NON admin:", user.email);
+                    handleAdminLogout(false);
+                    showAdminLoginScreen('Accesso riservato agli amministratori.');
+                }
+            } else {
+                adminUser = null;
+                console.log('Nessun utente (admin) loggato. Mostro login.');
+                showAdminLoginScreen();
+            }
+        });
+
+         // ------ Event Handlers ------
+        if (adminLoginForm) adminLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideLoginAlert();
+            setButtonLoading(loginSubmitBtn, true);
+            const email = document.getElementById('admin-email').value.trim().toLowerCase();
+            const password = document.getElementById('admin-password').value;
+
+            if (!email || !password) { showLoginAlert('Email e password obbligatori.', true); setButtonLoading(loginSubmitBtn, false); return; }
+            console.log(`Tentativo login admin con email: ${email}`);
+
+            setPersistence(auth, browserSessionPersistence)
+                .then(() => signInWithEmailAndPassword(auth, email, password))
+                .then((userCredential) => { console.log("Login Firebase riuscito per", userCredential.user.email); /* onAuthStateChanged farà il resto */ })
+                .catch((error) => {
+                    console.error("Errore login Admin:", error.code, error.message);
+                    let message = 'Credenziali admin non valide.';
+                    if (error.code === 'auth/invalid-email') message = 'Formato email non valido.';
+                    else if (error.code === 'auth/too-many-requests') message = 'Troppi tentativi. Riprova più tardi.';
+                    else if (error.code === 'auth/network-request-failed') message = 'Errore di rete. Controlla la connessione.';
+                    else if (error.code !== 'auth/wrong-password' && error.code !== 'auth/user-not-found' && error.code !== 'auth/invalid-credential') message = `Errore accesso: ${error.code}`;
+                    showLoginAlert(message, true);
+                    setButtonLoading(loginSubmitBtn, false);
+                });
+        });
+        if(confirmBtn) confirmBtn.addEventListener('click', () => { if (currentConfirmCallback) currentConfirmCallback(); });
+        if(cancelBtn) cancelBtn.addEventListener('click', hideConfirmModal);
+
+        // --- Handlers Specifici Pannello Admin ---
+        function handleAdminLogout(showAlertMsg = true) { /* ... codice invariato ... */ console.log("Logout admin richiesto..."); signOut(auth).then(() => { if (showAlertMsg) showAdminAlert("Logout effettuato.", false); }).catch(err => { console.error("Errore logout admin:", err); showAdminAlert("Errore durante il logout.", true); }); }
+        function handleResetAll() { /* ... codice invariato (usa showAdminAlert) ... */ if (!adminUser) { showAdminAlert("Non autenticato.", true); return; } showConfirmModal('ATTENZIONE MASSIMA', 'Eliminare TUTTI i profili e TUTTE le transazioni di TUTTI gli utenti dal database? IRREVERSIBILE! (Gli account Auth rimarranno)', () => { console.log("Avvio Reset All Dati DB..."); const usersDataRef = ref(database, 'users'); const profilesDataRef = ref(database, 'userProfiles'); const deleteUsersPromise = remove(usersDataRef).catch(err => ({ node: 'users', error: err })); const deleteProfilesPromise = remove(profilesDataRef).catch(err => ({ node: 'profiles', error: err })); Promise.allSettled([deleteUsersPromise, deleteProfilesPromise]).then(results => { const errors = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value?.error)); if (errors.length > 0) { console.error("Errori durante Reset All:", errors); showAdminAlert(`Errore durante l'eliminazione di alcuni dati (${errors.map(e => e.reason?.node || e.value?.node).join(', ')}).`, true, 5000); } else { showAdminAlert('TUTTI i dati utente (transazioni e profili) eliminati dal database.', false, 5000); console.warn("Reset All NON elimina gli utenti da Firebase Auth."); } loadUsersFromProfiles(); hideConfirmModal(); }); }); }
+        function handleDeleteAdmin() { /* ... codice invariato (usa showAdminAlert e deleteUser) ... */ if (!adminUser) { showAdminAlert("Non autenticato.", true); return; } showConfirmModal('Elimina Account Admin ATTUALE', `Eliminare il tuo account admin (${adminUser.email}) da Firebase Authentication e tutti i dati associati? Sarai disconnesso. IRREVERSIBILE.`, () => { console.log("Avvio auto-eliminazione admin:", adminUser.uid); const adminId = adminUser.uid; const adminProfileRef = ref(database, `userProfiles/${adminId}`); const adminTransactionsRef = ref(database, `users/${adminId}/transactions`); const currentUserForDelete = auth.currentUser; if (!currentUserForDelete || currentUserForDelete.uid !== adminId) { showAdminAlert("Errore: l'utente corrente non corrisponde all'admin da eliminare.", true); hideConfirmModal(); return; } const deleteProfilePromise = remove(adminProfileRef).catch(err => console.warn("Warn: Errore eliminazione profilo admin", err)); const deleteTransactionsPromise = remove(adminTransactionsRef).catch(err => console.warn("Warn: Errore eliminazione transazioni admin", err)); const deleteAuthPromise = deleteUser(currentUserForDelete); Promise.allSettled([deleteProfilePromise, deleteTransactionsPromise]).then(() => deleteAuthPromise).then(() => { console.log("Account admin Auth eliminato con successo."); showAdminAlert('Account admin eliminato (Auth + Dati DB). Sarai disconnesso.', false, 4000); hideConfirmModal(); }).catch(error => { console.error("Errore durante l'eliminazione dell'admin (Auth o DB):", error); let msg = "Errore durante l'auto-eliminazione dell'admin."; if (error.code === 'auth/requires-recent-login') { msg = "Eliminazione fallita: richiesto login recente. Effettua nuovamente il login e riprova."; } showAdminAlert(msg, true, 6000); hideConfirmModal(); }); }); }
+        function handleSelectAllClick() { const shouldSelectAll = selectedUserIds.length < allUsersData.length; toggleSelectAll(shouldSelectAll); }
+        function handleSelectAllToggle(event) { toggleSelectAll(event.target.checked); }
+        function handleDeleteSelectedClick() { if (selectedUserIds.length === 0) return; const uT = selectedUserIds.length === 1 ? "l'utente" : `i ${selectedUserIds.length} utenti`; showConfirmModal('Conferma Eliminazione Dati', `Eliminare i dati DB (profilo e transazioni) per ${uT} selezionati? IRREVERSIBILE. (Account Auth NON verranno eliminati)`, () => deleteUsersData(selectedUserIds)); }
+
+        // --- Setup listeners specifici del pannello admin ---
+        function setupAdminPanelListeners() { console.log("Setup listeners pannello admin..."); if (logoutBtn) { logoutBtn.removeEventListener('click', handleAdminLogout); logoutBtn.addEventListener('click', handleAdminLogout); } if (resetAllBtn) { resetAllBtn.removeEventListener('click', handleResetAll); resetAllBtn.addEventListener('click', handleResetAll); } if (deleteAdminBtn) { deleteAdminBtn.removeEventListener('click', handleDeleteAdmin); deleteAdminBtn.addEventListener('click', handleDeleteAdmin); } if (selectAllBtn) { selectAllBtn.removeEventListener('click', handleSelectAllClick); selectAllBtn.addEventListener('click', handleSelectAllClick); } if (selectAllHeaderCheckbox) { selectAllHeaderCheckbox.removeEventListener('change', handleSelectAllToggle); selectAllHeaderCheckbox.addEventListener('change', handleSelectAllToggle); } if (deleteSelectedBtn) { deleteSelectedBtn.removeEventListener('click', handleDeleteSelectedClick); deleteSelectedBtn.addEventListener('click', handleDeleteSelectedClick); } setupUserTableEventListeners(); }
+
+        // ------ User Management Functions ------
+        function loadUsersFromProfiles() { /* ... codice invariato (usa showAdminAlert)... */ if (!adminUser) { console.log("loadUsers: admin non loggato"); return; } console.log("Caricamento profili da /userProfiles..."); usersTableBody.innerHTML = '<tr><td colspan="6" class="td-center text-gray-400 py-6" data-placeholder>Caricamento utenti...</td></tr>'; const profilesRef = ref(database, 'userProfiles'); get(profilesRef).then((snapshot) => { allUsersData = []; if (snapshot.exists()) { const data = snapshot.val(); allUsersData = Object.entries(data).map(([uid, profile]) => ({ id: uid, ...profile })); console.log("Profili caricati:", allUsersData.length); } else { console.log("Nessun profilo utente trovato."); } userCountSpan.textContent = allUsersData.length; renderUsersTable(allUsersData); selectedUserIds = []; updateSelectionUI(); }).catch((error) => { console.error("Errore lettura profili utente:", error); showAdminAlert("Errore nel caricamento degli utenti. Controlla le regole DB.", true); usersTableBody.innerHTML = '<tr><td colspan="6" class="td-center text-red-400 py-6" data-placeholder>Errore caricamento utenti.</td></tr>'; }); }
+        function renderUsersTable(usersToRender) { /* ... codice invariato (usa showAdminAlert) ... */ usersTableBody.innerHTML = ''; if (!usersToRender || usersToRender.length === 0) { usersTableBody.innerHTML = '<tr><td colspan="6" class="td-center text-gray-400 py-6" data-placeholder>Nessun utente trovato.</td></tr>'; return; } usersToRender.forEach(u => { const r = usersTableBody.insertRow(); r.setAttribute('data-user-id', u.id); let fD = 'N/A'; try { if (u.createdAt) fD = new Date(u.createdAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) {} const name = u.name || 'N/D'; const email = u.email || 'N/D'; r.innerHTML = `<td class="px-2 py-2 text-center"><input type="checkbox" class="user-checkbox h-4 w-4 rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500" data-user-id="${u.id}"></td> <td class="px-4 py-2 text-xs break-all">${u.id || 'N/A'}</td> <td class="px-4 py-2">${name}</td> <td class="px-4 py-2 break-all">${email}</td> <td class="px-4 py-2 whitespace-nowrap">${fD}</td> <td class="px-4 py-2 text-center whitespace-nowrap space-x-1"> <button class="btn btn-sm bg-blue-600 text-white hover:bg-blue-700 view-transactions-btn" data-user-id="${u.id}" data-user-name="${name}" title="Vedi transazioni">Vedi</button> <button class="btn btn-sm btn-danger delete-user-btn" data-user-id="${u.id}" data-user-name="${name}" title="Elimina Dati di ${name}">Elimina Dati</button> </td>`; }); setupUserTableEventListeners(); } // Usato btn e btn-sm per coerenza
+        function setupUserTableEventListeners() { /* ... codice invariato ... */ document.querySelectorAll('.user-checkbox').forEach(cb => { cb.removeEventListener('change', handleUserCheckboxChange); cb.addEventListener('change', handleUserCheckboxChange); }); document.querySelectorAll('.delete-user-btn').forEach(btn => { btn.removeEventListener('click', handleDeleteUserClick); btn.addEventListener('click', handleDeleteUserClick); }); document.querySelectorAll('.view-transactions-btn').forEach(btn => { btn.removeEventListener('click', handleViewTransactionsClick); btn.addEventListener('click', handleViewTransactionsClick); }); }
+        function handleUserCheckboxChange(e) { /* ... codice invariato ... */ const id = e.target.getAttribute('data-user-id'); if (e.target.checked) { if (!selectedUserIds.includes(id)) selectedUserIds.push(id); } else { selectedUserIds = selectedUserIds.filter(i => i !== id); } updateSelectionUI(); }
+        function handleDeleteUserClick(e) { /* ... codice invariato ... */ const id = e.target.getAttribute('data-user-id'); const name = e.target.getAttribute('data-user-name') || id; showConfirmModal('Conferma Eliminazione Dati', `Eliminare i dati DB (profilo e transazioni) per ${name}? IRREVERSIBILE. (Account Auth NON verrà eliminato)`, () => deleteUsersData([id])); }
+        function handleViewTransactionsClick(event) { /* ... codice invariato (usa showAdminAlert) ... */ if (!adminUser) { showAdminAlert("Non autenticato.", true); return; } const userId = event.target.getAttribute('data-user-id'); const userName = event.target.getAttribute('data-user-name'); if (!userId) { showAdminAlert("ID utente mancante.", true); return; } console.log(`Visualizzazione transazioni per ${userName} (${userId})`); modalUserName.textContent = `Transazioni di: ${userName}`; modalTransactionsTableBody.innerHTML = '<tr><td colspan="3" class="td-center text-gray-400 py-6" data-placeholder>Caricamento...</td></tr>'; modalTotalDays.textContent = '--'; modalTotalHours.textContent = '--'; showUserTransactionsModal(); const userTransactionsRef = ref(database, `users/${userId}/transactions`); get(userTransactionsRef).then((snapshot) => { modalTransactions = []; if (snapshot.exists()) { const data = snapshot.val(); modalTransactions = Object.entries(data).map(([key, value]) => ({ key: key, ...value })); } else { console.log(`Nessuna transazione trovata per ${userId}`); } try { const summary = calculateUserSummary(modalTransactions); modalTotalDays.textContent = summary.totalDays; modalTotalHours.textContent = summary.totalHours.toFixed(1) + ' ore'; } catch (calcError) { console.error("Errore calcolo sommario:", calcError); modalTotalDays.textContent = 'Err'; modalTotalHours.textContent = 'Err'; } modalSortState = { column: 'data', direction: 'desc' }; sortAndRenderModalTransactions(); }).catch((error) => { console.error("Errore lettura transazioni utente:", error); modalTransactionsTableBody.innerHTML = '<tr><td colspan="3" class="td-center text-red-400 py-6" data-placeholder>Errore caricamento transazioni.</td></tr>'; modalTransactions = []; modalTotalDays.textContent = 'Err'; modalTotalHours.textContent = 'Err'; showAdminAlert("Errore caricamento transazioni utente. Controlla le regole DB o la console.", true); }); }
+        function calculateUserSummary(transactions) { /* ... codice invariato ... */ let tH = 0; const wD = new Set(); const g = {}; const sT = [...transactions].sort((a, b) => { try { return new Date(`${a.data}T${a.orario}`) - new Date(`${b.data}T${b.orario}`); } catch(e){ return 0; } }); sT.forEach(t => { if (!t || !t.data || !t.orario || !t.tipo) return; if (!g[t.data]) { g[t.data] = { e: null, u: null }; } if (t.tipo === 'entrata' && !g[t.data].e) { g[t.data].e = t.orario; } else if (t.tipo === 'uscita') { g[t.data].u = t.orario; } }); for (const dS in g) { const y = g[dS]; if (y.e && y.u) { try { const s = new Date(`1970-01-01T${y.e}:00`); const e = new Date(`1970-01-01T${y.u}:00`); if (isNaN(s) || isNaN(e)) continue; let diff = e - s; if (diff < 0) diff = 0; const dH = diff / 3600000; tH += dH; wD.add(dS); } catch (e) { console.warn(`Calc Err ${dS}`, e); } } } return { totalDays: wD.size, totalHours: tH }; }
+        function renderModalTransactions() { /* ... codice invariato ... */ modalTransactionsTableBody.innerHTML = ''; if (modalTransactions.length === 0) { modalTransactionsTableBody.innerHTML = '<tr><td colspan="3" class="td-center text-gray-400 py-6" data-placeholder>Nessuna transazione.</td></tr>'; return; } const fmtDt = (d) => { try { return new Date(d).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){ return d; }}; modalTransactions.forEach(t => { const r = modalTransactionsTableBody.insertRow(); r.innerHTML = `<td class="px-4 py-2 whitespace-nowrap">${fmtDt(t.data)}</td> <td class="px-4 py-2">${t.orario||'--'}</td> <td class="px-4 py-2 capitalize">${t.tipo||'--'}</td>`; }); }
+        function sortModalTransactions(c) { /* ... codice invariato ... */ if (modalSortState.column === c) { modalSortState.direction = modalSortState.direction === 'asc' ? 'desc' : 'asc'; } else { modalSortState.column = c; modalSortState.direction = 'asc'; } sortAndRenderModalTransactions(); }
+        function sortAndRenderModalTransactions() { /* ... codice invariato ... */ sortTable(modalTransactions, modalSortState); renderModalTransactions(); updateModalSortIndicators(); }
+        function sortTable(arr, st) { /* ... codice invariato ... */ const { column: c, direction: d } = st; const m = d === 'asc' ? 1 : -1; arr.sort((a, b) => { let vA, vB; if (c === 'data') { try { vA = new Date(`${a.data}T${a.orario || '00:00'}`); vB = new Date(`${b.data}T${b.orario || '00:00'}`);} catch(e){ vA = 0; vB = 0; }} else if (c === 'ora') { vA = a.orario || ''; vB = b.orario || ''; } else { vA = String(a[c] || '').toLowerCase(); vB = String(b[c] || '').toLowerCase(); } if (vA instanceof Date && vB instanceof Date) { if(isNaN(vA)&&isNaN(vB)) return 0; if(isNaN(vA)) return 1*m; if(isNaN(vB)) return -1*m; return (vA - vB) * m; } if (typeof vA === 'number' && typeof vB === 'number') { return (vA - vB) * m;} if (vA < vB) return -1 * m; if (vA > vB) return 1 * m; return 0; }); }
+        function updateModalSortIndicators() { /* ... codice invariato ... */ const tbl = userTransactionsModal.querySelector('table'); if (!tbl) return; const hdrs = tbl.querySelectorAll('thead th.sortable'); hdrs.forEach(th => { const i = th.querySelector('.sort-indicator'); if (!i) return; const cn = th.getAttribute('onclick')?.match(/'([^']+)'/)?.[1]; i.textContent = (cn === modalSortState.column) ? (modalSortState.direction === 'asc' ? '▲' : '▼') : ''; }); }
+        function updateSelectionUI() { /* ... codice invariato ... */ document.querySelectorAll('.user-checkbox').forEach(cb => { cb.checked = selectedUserIds.includes(cb.getAttribute('data-user-id')); }); const tU = allUsersData.length; const sC = selectedUserIds.length; if (tU === 0) { selectAllHeaderCheckbox.checked = false; selectAllHeaderCheckbox.indeterminate = false; } else if (sC === tU) { selectAllHeaderCheckbox.checked = true; selectAllHeaderCheckbox.indeterminate = false; } else if (sC > 0) { selectAllHeaderCheckbox.checked = false; selectAllHeaderCheckbox.indeterminate = true; } else { selectAllHeaderCheckbox.checked = false; selectAllHeaderCheckbox.indeterminate = false; } selectedCountSpan.textContent = sC; deleteSelectedBtn.disabled = sC === 0; deleteSelectedBtn.classList.toggle('opacity-50', sC === 0); deleteSelectedBtn.classList.toggle('cursor-not-allowed', sC === 0); }
+        function toggleSelectAll(shouldSelect) { selectedUserIds = shouldSelect ? allUsersData.map(u => u.id) : []; updateSelectionUI(); }
+
+        // Eliminazione DATI UTENTE (DB solo)
+        function deleteUsersData(ids) { /* ... codice invariato (usa showAdminAlert)... */ if (!adminUser) { showAdminAlert("Non autenticato.", true); hideConfirmModal(); return; } if (!Array.isArray(ids) || ids.length === 0) { hideConfirmModal(); return; } console.log("Avvio eliminazione dati DB per utenti:", ids); const promises = []; ids.forEach(userId => { const transactionsRef = ref(database, `users/${userId}/transactions`); promises.push(remove(transactionsRef).catch(err => ({ userId, type: 'transactions', error: err }))); const profileRef = ref(database, `userProfiles/${userId}`); promises.push(remove(profileRef).catch(err => ({ userId, type: 'profile', error: err }))); console.warn(`Eliminazione Auth per ${userId} NON eseguita (richiede Cloud Function).`); }); Promise.allSettled(promises).then(results => { const errors = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value?.error)); const deletedCount = ids.length - errors.length; if (errors.length > 0) { console.error("Errori eliminazione dati DB:", errors); showAdminAlert(`Errore eliminazione dati per ${errors.length} utenti. Controlla console.`, true, 5000); } else { showAdminAlert(`${deletedCount} ${deletedCount === 1 ? 'utente' : 'utenti'}: dati DB eliminati.`, false, 5000); } loadUsersFromProfiles(); hideConfirmModal(); }); }
+
+        // ------ Initial Load gestito da onAuthStateChanged ------
+        console.log("Script admin.html caricato e pronto.");
+
+    </script>
+</body>
+</html>
